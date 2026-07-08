@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.api.schemas.chat_message_api import ChatMessageApi
 
+from app.api.schemas.prompt_context_api import PromptContextApi
+
 
 class GenerateRequestApi(BaseModel):
     """
@@ -52,7 +54,9 @@ class GenerateRequestApi(BaseModel):
         default=1024,
         gt=0,
     )
-
+    
+    prompt_context: PromptContextApi | None = None
+    
     @model_validator(mode="after")
     def validate_request(self):
         """

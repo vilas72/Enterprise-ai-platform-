@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.domain.models.chat_message import ChatMessage
 
+from app.domain.value_objects.prompt_context import PromptContext
+
 
 
 class GenerateRequest(BaseModel):
@@ -52,7 +54,9 @@ class GenerateRequest(BaseModel):
         default=1024,
         gt=0,
     )
-
+    
+    prompt_context: PromptContext | None = None
+     
     @model_validator(mode="after")
     def populate_messages(self):
         """

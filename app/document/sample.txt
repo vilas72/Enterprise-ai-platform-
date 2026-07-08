@@ -1,0 +1,5 @@
+Redis is an in-memory cache database.
+
+FastAPI is a Python web framework.
+
+Magento is an Adobe Commerce platform.

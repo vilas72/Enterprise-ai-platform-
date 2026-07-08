@@ -7,6 +7,8 @@ from app.core.config import settings
 from app.domain.exceptions.ai_provider_exception import AIProviderException
 from app.domain.generate_request import GenerateRequest
 
+from app.embeddings.embedding_request import EmbeddingRequest
+
 
 class GeminiClient(BaseClient):
     """
@@ -22,6 +24,8 @@ class GeminiClient(BaseClient):
         self.client = genai.Client(
             api_key=provider.api_key,
         )
+        
+       
 
     def _build_prompt(
         self,
@@ -123,7 +127,7 @@ class GeminiClient(BaseClient):
     ) -> Generator[str, None, None]:
 
         prompt = self._build_prompt(request)
-
+        
         try:
 
             stream = self.client.models.generate_content_stream(
@@ -160,5 +164,50 @@ class GeminiClient(BaseClient):
 
             raise AIProviderException(
                 message=f"Gemini streaming failed: {message}",
+                provider="gemini",
+            ) from ex
+
+    def generate_embedding(
+        self,
+        request: EmbeddingRequest,
+        model: str,
+    ):
+        """
+        Generate embedding using Gemini.
+        """
+
+        try:
+
+            response = self.client.models.embed_content(
+                model=model,
+                contents=request.text,
+            )
+
+            return response
+
+        except Exception as ex:
+
+            message = str(ex)
+
+            if "RESOURCE_EXHAUSTED" in message:
+                raise AIProviderException(
+                    message="Gemini quota exceeded.",
+                    provider="gemini",
+                ) from ex
+
+            if "UNAUTHENTICATED" in message:
+                raise AIProviderException(
+                    message="Gemini authentication failed.",
+                    provider="gemini",
+                ) from ex
+
+            if "PERMISSION_DENIED" in message:
+                raise AIProviderException(
+                    message="Gemini permission denied.",
+                    provider="gemini",
+                ) from ex
+
+            raise AIProviderException(
+                message=f"Gemini embedding request failed: {message}",
                 provider="gemini",
             ) from ex

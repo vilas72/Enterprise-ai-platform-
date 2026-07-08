@@ -2,6 +2,8 @@ from app.api.schemas.generate_request_api import GenerateRequestApi
 from app.domain.generate_request import GenerateRequest
 from app.domain.models.chat_message import ChatMessage
 
+from app.domain.value_objects.prompt_context import PromptContext
+
 
 class RequestMapper:
     """
@@ -25,6 +27,14 @@ class RequestMapper:
             provider=request.provider,
             model=request.model,
             prompt=request.prompt,
+            prompt_context=(
+                PromptContext(
+                    name=request.prompt_context.name,
+                    variables=request.prompt_context.variables,
+                )
+                if request.prompt_context
+                else None
+            ),
             messages=messages,
             system_prompt=request.system_prompt,
             temperature=request.temperature,

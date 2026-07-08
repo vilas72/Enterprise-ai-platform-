@@ -17,6 +17,10 @@ from app.core.constants import (
     ProviderName,
 )
 
+from app.core.constants import (
+    DEFAULT_OPENAI_EMBEDDING_MODEL,
+    DEFAULT_GEMINI_EMBEDDING_MODEL,
+)
 
 load_dotenv(ENV_FILE)
 
@@ -25,6 +29,7 @@ class ProviderSettings(BaseModel):
     name: ProviderName
     api_key: str | None = None
     model: str
+    embedding_model: str | None = None
     base_url: str | None = None
     enabled: bool = True
     timeout_seconds: int = Field(default=DEFAULT_REQUEST_TIMEOUT_SECONDS, ge=1)
@@ -108,27 +113,50 @@ def get_settings() -> Settings:
         log_level=_env("LOG_LEVEL", DEFAULT_LOG_LEVEL) or DEFAULT_LOG_LEVEL,
         default_provider=ProviderName(_env("DEFAULT_PROVIDER", DEFAULT_PROVIDER.value)),
         openai=ProviderSettings(
-            name=ProviderName.OPENAI,
-            api_key=_env("OPENAI_API_KEY"),
-            model=_env("OPENAI_MODEL", DEFAULT_OPENAI_MODEL) or DEFAULT_OPENAI_MODEL,
-            base_url=_env("OPENAI_BASE_URL"),
-            enabled=_env_bool("OPENAI_ENABLED", True),
-            timeout_seconds=_env_int(
-                "OPENAI_TIMEOUT_SECONDS", DEFAULT_REQUEST_TIMEOUT_SECONDS
+                name=ProviderName.OPENAI,
+                api_key=_env("OPENAI_API_KEY"),
+                model=_env("OPENAI_MODEL", DEFAULT_OPENAI_MODEL)
+                    or DEFAULT_OPENAI_MODEL,
+                embedding_model=_env(
+                    "OPENAI_EMBEDDING_MODEL",
+                    DEFAULT_OPENAI_EMBEDDING_MODEL,
+                )
+                or DEFAULT_OPENAI_EMBEDDING_MODEL,
+                base_url=_env("OPENAI_BASE_URL"),
+                enabled=_env_bool("OPENAI_ENABLED", True),
+                timeout_seconds=_env_int(
+                    "OPENAI_TIMEOUT_SECONDS",
+                    DEFAULT_REQUEST_TIMEOUT_SECONDS,
+                ),
+                max_retries=_env_int(
+                    "OPENAI_MAX_RETRIES",
+                    DEFAULT_MAX_RETRIES,
+                ),
             ),
-            max_retries=_env_int("OPENAI_MAX_RETRIES", DEFAULT_MAX_RETRIES),
-        ),
         gemini=ProviderSettings(
-            name=ProviderName.GEMINI,
-            api_key=_env("GEMINI_API_KEY"),
-            model=_env("GEMINI_MODEL", DEFAULT_GEMINI_MODEL) or DEFAULT_GEMINI_MODEL,
-            base_url=_env("GEMINI_BASE_URL"),
-            enabled=_env_bool("GEMINI_ENABLED", True),
-            timeout_seconds=_env_int(
-                "GEMINI_TIMEOUT_SECONDS", DEFAULT_REQUEST_TIMEOUT_SECONDS
+                name=ProviderName.GEMINI,
+                api_key=_env("GEMINI_API_KEY"),
+                model=_env(
+                    "GEMINI_MODEL",
+                    DEFAULT_GEMINI_MODEL,
+                )
+                or DEFAULT_GEMINI_MODEL,
+                embedding_model=_env(
+                    "GEMINI_EMBEDDING_MODEL",
+                    DEFAULT_GEMINI_EMBEDDING_MODEL,
+                )
+                or DEFAULT_GEMINI_EMBEDDING_MODEL,
+                base_url=_env("GEMINI_BASE_URL"),
+                enabled=_env_bool("GEMINI_ENABLED", True),
+                timeout_seconds=_env_int(
+                    "GEMINI_TIMEOUT_SECONDS",
+                    DEFAULT_REQUEST_TIMEOUT_SECONDS,
+                ),
+                max_retries=_env_int(
+                    "GEMINI_MAX_RETRIES",
+                    DEFAULT_MAX_RETRIES,
+                ),
             ),
-            max_retries=_env_int("GEMINI_MAX_RETRIES", DEFAULT_MAX_RETRIES),
-        ),
         bedrock=BedrockSettings(
             model=_env("BEDROCK_MODEL", DEFAULT_BEDROCK_MODEL)
             or DEFAULT_BEDROCK_MODEL,

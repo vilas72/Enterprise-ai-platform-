@@ -2,6 +2,7 @@ from app.conversation.conversation_store import ConversationStore
 from app.conversation.session import ConversationSession
 from app.domain.models.chat_message import ChatMessage
 
+from app.conversation.conversation_memory_manager import ConversationMemoryManager
 
 class ConversationManager:
     """
@@ -17,8 +18,10 @@ class ConversationManager:
     def __init__(
         self,
         conversation_store: ConversationStore,
+        memory_manager: ConversationMemoryManager,
     ):
         self._store = conversation_store
+        self._memory_manager = memory_manager
 
     def create_session(self) -> ConversationSession:
         """
@@ -68,8 +71,14 @@ class ConversationManager:
                 content=message,
             )
         )
+        
+        #
+        # Apply conversation memory policy
+        #
+        self._memory_manager.apply(session)
 
         self.save_session(session)
+        
 
     def add_assistant_message(
         self,
@@ -87,6 +96,8 @@ class ConversationManager:
             )
         )
 
+        self._memory_manager.apply(session)
+        
         self.save_session(session)
 
     def get_messages(

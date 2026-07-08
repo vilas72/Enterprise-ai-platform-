@@ -10,17 +10,36 @@ from app.api.routers.health_router import router as health_router
 
 from app.api.routers.provider_router import router as provider_router
 
+from app.api.routers.prompt_router import router as prompt_router
+
+from app.api.routers.embedding_router import router as embedding_router
+
 from app.middleware.correlation_middleware import CorrelationMiddleware
 
 from app.api.exception_handlers.global_exception_handler import (
     register_exception_handlers,
 )
 
+
 from app.api.routers.conversation_router import (
     router as conversation_router,
 )
 
+from app.api.routers.vector_router import (
+    router as vector_router,
+)
+
 from app.core.logging.logger import get_logger
+
+from app.api.routers.rag_router import (
+    router as rag_router,
+)
+
+from app.api.routers.document_router import (
+    router as document_router,
+)
+
+
 
 configure_logging()
 
@@ -36,8 +55,14 @@ app.include_router(health_router)
 app.include_router(ai_router)
 app.include_router(provider_router)
 app.include_router(conversation_router)
+app.include_router(prompt_router)
+app.include_router(embedding_router)
+app.include_router(vector_router)
+app.include_router(rag_router)
+app.include_router(document_router)
 
 register_exception_handlers(app)
+
 
 
 def main():

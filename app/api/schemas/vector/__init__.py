@@ -1,0 +1,1 @@
+"""Vector API schemas package."""
