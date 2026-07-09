@@ -15,4 +15,5 @@ class MockProvider(AIProvider):
             completion_tokens=20,
             total_tokens=30,
             latency_ms=5,
+            finish_reason="stop",
         )

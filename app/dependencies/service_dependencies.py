@@ -21,7 +21,7 @@ from app.rag.rag_service import RagService
 
 from app.document.chunker import DocumentChunker
 from app.document.ingestion_service import IngestionService
-from app.document.text_loader import TextLoader
+
 
 
 # Register providers once when this module is imported
@@ -68,10 +68,9 @@ _rag_service = RagService(
     ai_service=_ai_service,
 )   
 
-_document_loader = TextLoader()
+
 _document_chunker  = DocumentChunker()
 _ingestion_service = IngestionService(
-    loader=_document_loader,
     chunker=_document_chunker ,
     vector_service=_vector_service,
 )

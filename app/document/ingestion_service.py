@@ -1,3 +1,5 @@
+from importlib.resources import path
+
 from app.document.chunker import DocumentChunker
 from app.document.loader_factory import LoaderFactory
 from app.document.loaders.document_loader import DocumentLoader
@@ -21,17 +23,16 @@ class IngestionService:
         self,
         chunker: DocumentChunker,
         vector_service: VectorService,
-        loader: DocumentLoader | None = None,
     ):
         self._chunker = chunker
         self._vector_service = vector_service
-        self._loader = loader
 
     def ingest(
         self,
         path: str,
         provider: str | None = None,
         model: str | None = None,
+        
     ) -> int:
         """
         Ingest a document into the vector store.
@@ -57,10 +58,7 @@ class IngestionService:
         # Select the appropriate loader.
         #
 
-        if self._loader is not None:
-            loader = self._loader
-        else:
-            loader = LoaderFactory.create(path)
+        loader = LoaderFactory.create(path)
 
         #
         # Step 2
@@ -94,6 +92,14 @@ class IngestionService:
                 },
                 provider=provider,
                 model=model,
+            )
+            
+            self._keyword_search.add_document(
+                {
+                    "document_id": chunk.id,
+                    "text": chunk.text,
+                    "metadata": chunk.metadata,
+                }
             )
 
         #

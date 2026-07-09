@@ -1,59 +1,106 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
-from app.conversation.session import ConversationSession
+from app.conversation.conversation import Conversation
 
 
 class ConversationStore(ABC):
     """
-    Abstract conversation storage.
+    Abstract repository for Conversation persistence.
 
-    This allows us to swap storage implementations
-    without changing business logic.
+    Implementations may store conversations in memory,
+    Redis, MongoDB, PostgreSQL, Cosmos DB, DynamoDB,
+    or any other persistence mechanism.
+
+    This interface follows the Repository Pattern and
+    Dependency Inversion Principle.
     """
 
     @abstractmethod
-    def create(self) -> ConversationSession:
-        """
-        Create a new conversation session.
-        """
-        pass
-
-    @abstractmethod
-    def get(
+    async def create(
         self,
-        session_id: str,
-    ) -> ConversationSession | None:
-        """
-        Retrieve a conversation session.
-        """
-        pass
-
-    @abstractmethod
-    def save(
-        self,
-        session: ConversationSession,
+        conversation: Conversation,
     ) -> None:
         """
-        Persist a conversation session.
+        Persist a new conversation.
+
+        Raises:
+            ValueError:
+                If the conversation already exists.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
-    def delete(
+    async def save(
         self,
-        session_id: str,
+        conversation: Conversation,
     ) -> None:
         """
-        Delete a conversation session.
+        Create or update a conversation.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
-    def exists(
+    async def get(
         self,
-        session_id: str,
+        conversation_id: str,
+    ) -> Conversation | None:
+        """
+        Retrieve a conversation by its identifier.
+
+        Returns:
+            Conversation if found, otherwise None.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def delete(
+        self,
+        conversation_id: str,
     ) -> bool:
         """
-        Check whether a session exists.
+        Delete a conversation.
+
+        Returns:
+            True if deleted, otherwise False.
         """
-        pass
+        raise NotImplementedError
+
+    @abstractmethod
+    async def exists(
+        self,
+        conversation_id: str,
+    ) -> bool:
+        """
+        Determine whether a conversation exists.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def list(
+        self,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[Conversation]:
+        """
+        Return a paginated list of conversations.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def count(self) -> int:
+        """
+        Return the total number of conversations.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def clear(self) -> None:
+        """
+        Remove all conversations.
+
+        Primarily intended for testing or development.
+        """
+        raise NotImplementedError

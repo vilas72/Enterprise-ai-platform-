@@ -51,6 +51,7 @@ class OpenAIProvider(AIProvider):
                 completion_tokens=response.usage.completion_tokens,
                 total_tokens=response.usage.total_tokens,
                 latency_ms=latency,
+                finish_reason="stop",
             )
 
         except Exception:

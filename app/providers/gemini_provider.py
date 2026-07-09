@@ -56,6 +56,7 @@ class GeminiProvider(AIProvider):
                 completion_tokens=0,
                 total_tokens=0,
                 latency_ms=latency,
+                finish_reason="stop",
             )
 
         except Exception:

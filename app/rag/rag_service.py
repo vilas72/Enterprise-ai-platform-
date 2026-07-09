@@ -58,19 +58,13 @@ class RagService:
         # Retrieve relevant documents
         #
 
-        search_results = self._vector_service.search(
+        search_results = self._hybrid_search.search(
             query=request.question,
-            top_k=request.top_k,
             provider=request.provider,
-            model=request.model,  # Used only for embeddings
+            model=request.model,
+            top_k=request.top_k,
         )
 
-        print("Retrieved Documents:", len(search_results))
-
-        for result in search_results:
-            print(result.document.id)
-            print(result.score)
-            print(result.document.text)
         #
         # Step 2
         # Convert results
