@@ -1,64 +1,56 @@
+from __future__ import annotations
+
 from threading import RLock
 
+from app.conversation.conversation import Conversation
 from app.conversation.conversation_store import ConversationStore
-from app.conversation.session import ConversationSession
 
 
 class InMemoryConversationStore(ConversationStore):
-    """
-    Thread-safe in-memory conversation store.
-    """
+    """Thread-safe in-memory conversation store."""
 
-    def __init__(self):
-        self._sessions: dict[str, ConversationSession] = {}
+    def __init__(self) -> None:
+        self._conversations: dict[str, Conversation] = {}
         self._lock = RLock()
 
-    def create(self) -> ConversationSession:
-        session = ConversationSession()
-
+    async def create(self, conversation: Conversation) -> None:
         with self._lock:
-            self._sessions[session.session_id] = session
+            if conversation.conversation_id in self._conversations:
+                raise ValueError(
+                    f"Conversation '{conversation.conversation_id}' already exists."
+                )
+            self._conversations[conversation.conversation_id] = conversation
 
-        return session
+    async def save(self, conversation: Conversation) -> None:
+        with self._lock:
+            self._conversations[conversation.conversation_id] = conversation
 
-    def get(
+    async def get(self, conversation_id: str) -> Conversation | None:
+        with self._lock:
+            return self._conversations.get(conversation_id)
+
+    async def delete(self, conversation_id: str) -> bool:
+        with self._lock:
+            return self._conversations.pop(conversation_id, None) is not None
+
+    async def exists(self, conversation_id: str) -> bool:
+        with self._lock:
+            return conversation_id in self._conversations
+
+    async def list(
         self,
-        session_id: str,
-    ) -> ConversationSession | None:
-
+        *,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[Conversation]:
         with self._lock:
-            return self._sessions.get(session_id)
+            items = list(self._conversations.values())
+            return items[offset : offset + limit]
 
-    def save(
-        self,
-        session: ConversationSession,
-    ) -> None:
-
+    async def count(self) -> int:
         with self._lock:
-            self._sessions[session.session_id] = session
+            return len(self._conversations)
 
-    def delete(
-        self,
-        session_id: str,
-    ) -> None:
-
+    async def clear(self) -> None:
         with self._lock:
-            self._sessions.pop(session_id, None)
-
-    def exists(
-        self,
-        session_id: str,
-    ) -> bool:
-
-        with self._lock:
-            return session_id in self._sessions
-
-    def clear(self) -> None:
-
-        with self._lock:
-            self._sessions.clear()
-
-    def count(self) -> int:
-
-        with self._lock:
-            return len(self._sessions)
+            self._conversations.clear()
