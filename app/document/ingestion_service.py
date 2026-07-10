@@ -1,8 +1,10 @@
 from importlib.resources import path
 
 from app.document.chunker import DocumentChunker
+from app.document.document import Document
 from app.document.loader_factory import LoaderFactory
 from app.document.loaders.document_loader import DocumentLoader
+from app.search.keyword_search import KeywordSearch
 from app.vectorstore.vector_service import VectorService
 
 
@@ -23,9 +25,11 @@ class IngestionService:
         self,
         chunker: DocumentChunker,
         vector_service: VectorService,
+        keyword_search: KeywordSearch | None = None,
     ):
         self._chunker = chunker
         self._vector_service = vector_service
+        self._keyword_search = keyword_search
 
     def ingest(
         self,
@@ -93,18 +97,66 @@ class IngestionService:
                 provider=provider,
                 model=model,
             )
-            
-            self._keyword_search.add_document(
-                {
-                    "document_id": chunk.id,
-                    "text": chunk.text,
-                    "metadata": chunk.metadata,
-                }
-            )
+
+            if self._keyword_search is not None:
+                self._keyword_search.add_document(
+                    {
+                        "document_id": chunk.id,
+                        "text": chunk.text,
+                        "metadata": chunk.metadata,
+                    }
+                )
 
         #
         # Step 5
         # Return indexed chunk count.
         #
+
+        return len(chunks)
+
+    def ingest_document(
+        self,
+        document: Document,
+        provider: str | None = None,
+        model: str | None = None,
+    ) -> int:
+        """
+        Ingest a pre-loaded Document directly (e.g. from a connector).
+
+        Skips the loader step — useful when the document has already been
+        fetched and normalized by a KnowledgeConnector.
+
+        Args:
+            document: Pre-loaded Document to ingest
+            provider: Embedding provider
+            model: Optional embedding model
+
+        Returns:
+            Number of indexed chunks
+        """
+        chunks = self._chunker.chunk(document)
+
+        for chunk in chunks:
+            self._vector_service.index(
+                document_id=chunk.id,
+                text=chunk.text,
+                metadata={
+                    **chunk.metadata,
+                    "document_id": chunk.document_id,
+                    "chunk_number": str(chunk.chunk_number),
+                    "document_name": document.name,
+                },
+                provider=provider,
+                model=model,
+            )
+
+            if self._keyword_search is not None:
+                self._keyword_search.add_document(
+                    {
+                        "document_id": chunk.id,
+                        "text": chunk.text,
+                        "metadata": chunk.metadata,
+                    }
+                )
 
         return len(chunks)

@@ -1,7 +1,7 @@
+from app.conversation.conversation import Conversation
 from app.conversation.conversation_store import ConversationStore
 from app.conversation.session import ConversationSession
-from app.domain.models.chat_message import ChatMessage
-
+from app.conversation.conversation_message import MessageRole, ConversationMessage
 from app.conversation.conversation_memory_manager import ConversationMemoryManager
 
 class ConversationManager:
@@ -23,53 +23,52 @@ class ConversationManager:
         self._store = conversation_store
         self._memory_manager = memory_manager
 
-    def create_session(self) -> ConversationSession:
+    async def create_session(self) -> Conversation:
         """
         Create a new conversation session.
         """
-        return self._store.create()
+        conversation = Conversation()
+        await self._store.save(conversation)
+        return conversation
 
-    def get_session(
+    async def get_session(
         self,
         session_id: str,
-    ) -> ConversationSession | None:
+    ) -> Conversation | None:
         """
         Retrieve an existing session.
         """
-        return self._store.get(session_id)
+        return await self._store.get(session_id)
 
-    def save_session(
+    async def save_session(
         self,
-        session: ConversationSession,
+        session: Conversation,
     ) -> None:
         """
         Persist a conversation session.
         """
-        self._store.save(session)
+        await self._store.save(session)
 
-    def delete_session(
+    async def delete_session(
         self,
         session_id: str,
     ) -> None:
         """
         Delete a conversation session.
         """
-        self._store.delete(session_id)
+        await self._store.delete(session_id)
 
-    def add_user_message(
+    async def add_user_message(
         self,
-        session: ConversationSession,
+        session: Conversation,
         message: str,
     ) -> None:
         """
         Append a user message.
         """
-
         session.add_message(
-            ChatMessage(
-                role="user",
-                content=message,
-            )
+            role=MessageRole.USER,
+            content=message,
         )
         
         #
@@ -77,35 +76,31 @@ class ConversationManager:
         #
         self._memory_manager.apply(session)
 
-        self.save_session(session)
+        await self.save_session(session)
         
 
-    def add_assistant_message(
+    async def add_assistant_message(
         self,
-        session: ConversationSession,
+        session: Conversation,
         message: str,
     ) -> None:
         """
         Append an assistant response.
         """
-
         session.add_message(
-            ChatMessage(
-                role="assistant",
-                content=message,
-            )
+            role=MessageRole.ASSISTANT,
+            content=message,
         )
 
         self._memory_manager.apply(session)
         
-        self.save_session(session)
+        await self.save_session(session)
 
     def get_messages(
         self,
-        session: ConversationSession,
-    ) -> list[ChatMessage]:
+        session: Conversation,
+    ) -> list[ConversationMessage]:
         """
         Return conversation history.
         """
-
         return session.messages.copy()

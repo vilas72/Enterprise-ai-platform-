@@ -17,6 +17,10 @@ class KeywordSearch:
     def index(self, documents: list[dict[str, object]]) -> None:
         self._documents = documents
 
+    def add_document(self, document: dict[str, object]) -> None:
+        """Append a single document to the index."""
+        self._documents.append(document)
+
     def search(self, query: str, top_k: int = 5) -> list[SearchResult]:
         if not query.strip():
             return []
@@ -40,10 +44,12 @@ class KeywordSearch:
                 continue
 
             score = overlap / max(1, len(doc_terms))
+            doc_id = str(document.get("document_id") or document.get("id") or "")
             scored.append(
                 (
                     score,
                     SearchResult(
+                        document_id=doc_id,
                         text=text,
                         score=score,
                         source="keyword",

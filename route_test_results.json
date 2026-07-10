@@ -1,0 +1,221 @@
+{
+  "timestamp": "2026-07-10T16:35:45.467794",
+  "base_url": "http://localhost:8000",
+  "total_tests": 16,
+  "pass_count": 9,
+  "fail_count": 0,
+  "error_count": 0,
+  "skip_count": 7,
+  "created_session_id": "655926ae-7798-403e-9989-15b2c90559b6",
+  "results": [
+    {
+      "timestamp": "2026-07-10T16:35:45.360083",
+      "method": "GET",
+      "path": "/health",
+      "description": "Health check endpoint",
+      "status": "PASS",
+      "status_code": 200,
+      "expected_status": 200,
+      "url": "http://localhost:8000/health",
+      "response_length": 54,
+      "response_data": {
+        "status": "UP",
+        "application": "Enterprise AI Platform"
+      },
+      "response_summary": "{'status': 'UP', 'application': 'Enterprise AI Platform'}"
+    },
+    {
+      "timestamp": "2026-07-10T16:35:45.378036",
+      "method": "GET",
+      "path": "/providers",
+      "description": "List all AI providers",
+      "status": "PASS",
+      "status_code": 200,
+      "expected_status": 200,
+      "url": "http://localhost:8000/providers",
+      "response_length": 19,
+      "response_data": [
+        "openai",
+        "gemini"
+      ],
+      "response_summary": "['openai', 'gemini']"
+    },
+    {
+      "timestamp": "2026-07-10T16:35:45.386014",
+      "method": "GET",
+      "path": "/providers/openai/models",
+      "description": "List OpenAI models",
+      "status": "PASS",
+      "status_code": 200,
+      "expected_status": 200,
+      "url": "http://localhost:8000/providers/openai/models",
+      "response_length": 326,
+      "response_data": [
+        {
+          "provider": "openai",
+          "name": "gpt-4.1-mini",
+          "display_name": "GPT-4.1 Mini",
+          "default": true,
+          "supports_streaming": true
+        },
+        {
+          "provider": "openai",
+          "name": "gpt-4.1",
+          "display_name": "GPT-4.1",
+          "default": false,
+          "supports_streaming": true
+        },
+        {
+          "provider": "openai",
+          "name": "gpt-4o",
+          "display_name": "GPT-4o",
+          "default": false,
+          "supports_streaming": true
+        }
+      ],
+      "response_summary": "[{'provider': 'openai', 'name': 'gpt-4.1-mini', 'display_name': 'GPT-4.1 Mini', 'default': True, 'supports_streaming': True}, {'provider': 'openai', 'name': 'gpt-4.1', 'display_name': 'GPT-4.1', 'defa"
+    },
+    {
+      "timestamp": "2026-07-10T16:35:45.408965",
+      "method": "GET",
+      "path": "/prompts",
+      "description": "List all prompts",
+      "status": "PASS",
+      "status_code": 200,
+      "expected_status": 200,
+      "url": "http://localhost:8000/prompts",
+      "response_length": 49,
+      "response_data": [
+        "assistant_prompt",
+        "rag_prompt",
+        "system_prompt"
+      ],
+      "response_summary": "['assistant_prompt', 'rag_prompt', 'system_prompt']"
+    },
+    {
+      "timestamp": "2026-07-10T16:35:45.414936",
+      "method": "POST",
+      "path": "/conversation",
+      "description": "Create new conversation session",
+      "status": "PASS",
+      "status_code": 201,
+      "expected_status": 201,
+      "url": "http://localhost:8000/conversation",
+      "response_length": 53,
+      "response_data": {
+        "session_id": "655926ae-7798-403e-9989-15b2c90559b6"
+      },
+      "response_summary": "{'session_id': '655926ae-7798-403e-9989-15b2c90559b6'}"
+    },
+    {
+      "timestamp": "2026-07-10T16:35:45.420922",
+      "method": "GET",
+      "path": "/conversation/655926ae-7798-403e-9989-15b2c90559b6",
+      "description": "Get conversation by session ID",
+      "status": "PASS",
+      "status_code": 200,
+      "expected_status": 200,
+      "url": "http://localhost:8000/conversation/655926ae-7798-403e-9989-15b2c90559b6",
+      "response_length": 67,
+      "response_data": {
+        "session_id": "655926ae-7798-403e-9989-15b2c90559b6",
+        "messages": []
+      },
+      "response_summary": "{'session_id': '655926ae-7798-403e-9989-15b2c90559b6', 'messages': []}"
+    },
+    {
+      "timestamp": "2026-07-10T16:35:45.436878",
+      "method": "DELETE",
+      "path": "/vectors/doc-123",
+      "description": "Delete document from vector store",
+      "status": "PASS",
+      "status_code": 204,
+      "expected_status": 204,
+      "url": "http://localhost:8000/vectors/doc-123",
+      "response_length": 0
+    },
+    {
+      "timestamp": "2026-07-10T16:35:45.440869",
+      "method": "DELETE",
+      "path": "/vectors",
+      "description": "Clear entire vector store",
+      "status": "PASS",
+      "status_code": 204,
+      "expected_status": 204,
+      "url": "http://localhost:8000/vectors",
+      "response_length": 0
+    },
+    {
+      "timestamp": "2026-07-10T16:35:45.461812",
+      "method": "POST",
+      "path": "/documents/upload",
+      "description": "Upload document for ingestion",
+      "status": "PASS",
+      "status_code": 200,
+      "url": "http://localhost:8000/documents/upload"
+    },
+    {
+      "timestamp": "2026-07-10T16:35:45.464803",
+      "method": "POST",
+      "path": "/conversation/655926ae-7798-403e-9989-15b2c90559b6/chat",
+      "description": "Send chat message",
+      "status": "SKIPPED",
+      "reason": "Requires external API",
+      "url": "http://localhost:8000/conversation/655926ae-7798-403e-9989-15b2c90559b6/chat"
+    },
+    {
+      "timestamp": "2026-07-10T16:35:45.464803",
+      "method": "POST",
+      "path": "/embeddings",
+      "description": "Generate embeddings",
+      "status": "SKIPPED",
+      "reason": "Requires external API",
+      "url": "http://localhost:8000/embeddings"
+    },
+    {
+      "timestamp": "2026-07-10T16:35:45.464803",
+      "method": "POST",
+      "path": "/ai/generate",
+      "description": "Generate AI response",
+      "status": "SKIPPED",
+      "reason": "Requires external API",
+      "url": "http://localhost:8000/ai/generate"
+    },
+    {
+      "timestamp": "2026-07-10T16:35:45.464803",
+      "method": "POST",
+      "path": "/ai/generate/stream",
+      "description": "Stream AI response (SSE)",
+      "status": "SKIPPED",
+      "reason": "Requires external API",
+      "url": "http://localhost:8000/ai/generate/stream"
+    },
+    {
+      "timestamp": "2026-07-10T16:35:45.464803",
+      "method": "POST",
+      "path": "/vectors",
+      "description": "Index document to vector store",
+      "status": "SKIPPED",
+      "reason": "Requires external API",
+      "url": "http://localhost:8000/vectors"
+    },
+    {
+      "timestamp": "2026-07-10T16:35:45.464803",
+      "method": "POST",
+      "path": "/vectors/search",
+      "description": "Search vector store",
+      "status": "SKIPPED",
+      "reason": "Requires external API",
+      "url": "http://localhost:8000/vectors/search"
+    },
+    {
+      "timestamp": "2026-07-10T16:35:45.464803",
+      "method": "POST",
+      "path": "/rag/ask",
+      "description": "Submit question for RAG processing",
+      "status": "SKIPPED",
+      "reason": "Requires external API",
+      "url": "http://localhost:8000/rag/ask"
+    }
+  ]
+}

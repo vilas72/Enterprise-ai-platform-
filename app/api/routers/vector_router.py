@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 
 from app.api.schemas.vector.index_request import IndexRequest
 from app.api.schemas.vector.index_response import IndexResponse
@@ -72,6 +72,7 @@ def search(
 
 @router.delete(
     "/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete(
     document_id: str,
@@ -82,12 +83,9 @@ def delete(
 
     vector_service.delete(document_id)
 
-    return {
-        "message": "Document deleted successfully.",
-    }
-
 @router.delete(
     "",
+    status_code=status.HTTP_204_NO_CONTENT,
 )
 def clear(
     vector_service: VectorService = Depends(
@@ -96,7 +94,3 @@ def clear(
 ):
 
     vector_service.clear()
-
-    return {
-        "message": "Vector store cleared successfully.",
-    }

@@ -28,16 +28,16 @@ router = APIRouter(
     response_model=CreateSessionResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def create_session(
+async def create_session(
     conversation_manager: ConversationManager = Depends(
         get_conversation_manager
     ),
 ):
 
-    session = conversation_manager.create_session()
+    conversation = await conversation_manager.create_session()
 
     return CreateSessionResponse(
-        session_id=session.session_id,
+        session_id=conversation.conversation_id,
     )
 
 
@@ -45,29 +45,29 @@ def create_session(
     "/{session_id}",
     response_model=ConversationResponse,
 )
-def get_conversation(
+async def get_conversation(
     session_id: str,
     conversation_manager: ConversationManager = Depends(
         get_conversation_manager
     ),
 ):
 
-    session = conversation_manager.get_session(session_id)
+    conversation = await conversation_manager.get_session(session_id)
 
-    if session is None:
+    if conversation is None:
         raise HTTPException(
             status_code=404,
             detail="Conversation not found.",
         )
 
     return ConversationResponse(
-        session_id=session.session_id,
+        session_id=conversation.conversation_id,
         messages=[
             ChatMessageApi(
-                role=message.role,
+                role=message.role.value,
                 content=message.content,
             )
-            for message in session.messages
+            for message in conversation.messages
         ],
     )
 
@@ -76,27 +76,28 @@ def get_conversation(
     "/{session_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-def delete_conversation(
+async def delete_conversation(
     session_id: str,
     conversation_manager: ConversationManager = Depends(
         get_conversation_manager
     ),
 ):
 
-    if not conversation_manager.get_session(session_id):
+    conversation = await conversation_manager.get_session(session_id)
+    if not conversation:
         raise HTTPException(
             status_code=404,
             detail="Conversation not found.",
         )
 
-    conversation_manager.delete_session(session_id)
+    await conversation_manager.delete_session(session_id)
 
 
 @router.post(
     "/{session_id}/chat",
     response_model=ChatResponse,
 )
-def chat(
+async def chat(
     session_id: str,
     request: ChatRequest,
     conversation_manager: ConversationManager = Depends(
@@ -107,9 +108,9 @@ def chat(
     ),
 ):
 
-    session = conversation_manager.get_session(session_id)
+    conversation = await conversation_manager.get_session(session_id)
 
-    if session is None:
+    if conversation is None:
         raise HTTPException(
             status_code=404,
             detail="Conversation not found.",
@@ -119,8 +120,8 @@ def chat(
     # Add user message
     #
 
-    conversation_manager.add_user_message(
-        session,
+    await conversation_manager.add_user_message(
+        conversation,
         request.message,
     )
 
@@ -131,7 +132,13 @@ def chat(
     generate_request = GenerateRequest(
         provider=request.provider,
         model=request.model,
-        messages=session.messages,
+        messages=[
+            {
+                "role": msg.role.value,
+                "content": msg.content
+            }
+            for msg in conversation.messages
+        ],
         temperature=request.temperature,
         max_tokens=request.max_tokens,
     )
@@ -146,13 +153,13 @@ def chat(
     # Save assistant response
     #
 
-    conversation_manager.add_assistant_message(
-        session,
+    await conversation_manager.add_assistant_message(
+        conversation,
         response.response,
     )
 
     return ChatResponse(
-        session_id=session.session_id,
+        session_id=conversation.conversation_id,
         provider=response.provider,
         model=response.model,
         response=response.response,

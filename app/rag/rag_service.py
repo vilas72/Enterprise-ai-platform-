@@ -6,6 +6,7 @@ from app.rag.rag_request import RagRequest
 from app.rag.rag_response import RagResponse
 from app.rag.retrieved_document import RetrievedDocument
 
+from app.search.hybrid_search import HybridSearch
 from app.services.ai_service import AIService
 from app.vectorstore.vector_service import VectorService
 
@@ -39,26 +40,35 @@ class RagService:
 
     def __init__(
         self,
+        hybrid_search: HybridSearch,
         vector_service: VectorService,
         ai_service: AIService,
     ):
+        self._hybrid_search = hybrid_search
         self._vector_service = vector_service
         self._ai_service = ai_service
 
-    def ask(
+    async def ask(
         self,
         request: RagRequest,
     ) -> RagResponse:
         """
-        Execute a RAG query.
+        Execute a RAG query with retrieval and generation.
+
+        Pipeline:
+        1. Search knowledge base (vector + keyword + reranking)
+        2. Build context from results
+        3. Generate prompt
+        4. Call LLM
+        5. Return answer with sources
         """
 
         #
         # Step 1
-        # Retrieve relevant documents
+        # Retrieve relevant documents (with reranking)
         #
 
-        search_results = self._hybrid_search.search(
+        search_results = await self._hybrid_search.search(
             query=request.question,
             provider=request.provider,
             model=request.model,
@@ -76,10 +86,10 @@ class RagService:
 
             documents.append(
                 RetrievedDocument(
-                    id=result.document.id,
-                    text=result.document.text,
+                    id=result.document_id,
+                    text=result.text,
                     score=result.score,
-                    metadata=result.document.metadata,
+                    metadata=result.metadata,
                 )
             )
 

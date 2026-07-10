@@ -21,14 +21,14 @@ router = APIRouter(
     "/ask",
     response_model=RagResponseApi,
 )
-def ask(
+async def ask(
     request: RagRequestApi,
     rag_service: RagService = Depends(
         get_rag_service,
     ),
 ):
 
-    response = rag_service.ask(
+    response = await rag_service.ask(
         RagMapper.to_domain(request),
     )
 

@@ -7,6 +7,7 @@ from app.rag.query_rewriter import QueryRewriter
 from app.rag.rag_request import RagRequest
 from app.rag.retrieval_result import RetrievalResult
 from app.search.hybrid_search import HybridSearch
+from app.reranking.reranker import Reranker
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +26,11 @@ class ConversationRetriever:
         self,
         hybrid_search: HybridSearch,
         query_rewriter: QueryRewriter,
+        reranker: Reranker,
     ) -> None:
         self._hybrid_search = hybrid_search
         self._query_rewriter = query_rewriter
+        self._reranker = reranker
 
     async def retrieve(
         self,
@@ -42,6 +45,7 @@ class ConversationRetriever:
         rewritten_query = await self._query_rewriter.rewrite(request)
         search_request = request.with_query(rewritten_query)
         documents = await self._hybrid_search.search(search_request)
+        documents = await self._reranker.rerank(rewritten_query, documents)
 
         elapsed = (time.perf_counter() - start_time) * 1000
 

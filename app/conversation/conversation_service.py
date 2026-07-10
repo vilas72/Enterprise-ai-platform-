@@ -159,14 +159,17 @@ class ConversationService:
                 "conversation_id cannot be empty."
             )
 
-        deleted = await self._conversation_store.delete(
-            conversation_id
-        )
-
-        if not deleted:
+        # Check if exists first
+        exists = await self._conversation_store.exists(conversation_id)
+        
+        if not exists:
             raise ConversationNotFoundError(
                 f"Conversation '{conversation_id}' not found."
             )
+
+        await self._conversation_store.delete(
+            conversation_id
+        )
 
     async def rename_conversation(
         self,
