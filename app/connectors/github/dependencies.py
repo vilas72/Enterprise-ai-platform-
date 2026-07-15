@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import os
-from functools import lru_cache
 
 from app.connectors.github.github_client import GitHubClient
 from app.connectors.github.github_connector import GitHubConnector
 from app.core.config import get_settings
 
 
-@lru_cache(maxsize=1)
 def get_github_client() -> GitHubClient:
     """
     Returns the singleton GitHub client.
@@ -40,7 +38,6 @@ def get_github_client() -> GitHubClient:
     )
 
 
-@lru_cache(maxsize=1)
 def get_github_connector() -> GitHubConnector:
     """
     Returns the singleton GitHub connector.

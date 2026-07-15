@@ -161,10 +161,10 @@ class DeveloperAgent:
         4. Build response
         """
 
-        logger.info(
-            "Executing developer capability '%s'",
-            request.capability.value,
-        )
+        #logger.info(
+        #    "Executing developer capability '%s'",
+        #    request.capability.value,
+        #)
 
         metadata = DeveloperExecutionMetadata()
 
@@ -186,7 +186,7 @@ class DeveloperAgent:
                     request.capability
                 ]
 
-                result = await handler(request.payload)
+                result = await handler(request)
 
             #
             # Sync Capabilities
@@ -198,7 +198,7 @@ class DeveloperAgent:
                     request.capability
                 ]
 
-                result = handler(request.payload)
+                result = handler(request)
 
             else:
 
@@ -277,31 +277,14 @@ class DeveloperAgent:
 
     def supports(
         self,
-        capability: DeveloperCapability | str,
+        capability: DeveloperCapability,
     ) -> bool:
         """
         Determine whether the Developer Agent supports
         a capability.
         """
 
-        if isinstance(capability, str):
-            try:
-                capability = DeveloperCapability(capability)
-            except ValueError:
-                return False
-
         return (
             capability in self._async_handlers
             or capability in self._sync_handlers
         )
-
-    @property
-    def name(self) -> str:
-        return "developer"
-
-    @property
-    def description(self) -> str:
-        return "Enterprise Developer Agent for repository, PR, Jira and AI-assisted engineering workflows."
-
-    def capabilities(self) -> list[str]:
-        return [capability.value for capability in self.supported_capabilities]

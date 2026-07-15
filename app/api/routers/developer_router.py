@@ -49,6 +49,7 @@ async def execute(
     try:
 
         payload = request.payload or {}
+        metadata = request.metadata or {}
 
         repository = None
         repo_payload = payload.get("repository")
@@ -58,6 +59,26 @@ async def execute(
                 repository=repo_payload["repository"],
                 branch=repo_payload.get("branch"),
             )
+        elif payload.get("owner") and payload.get("repository"):
+            repository = RepositoryReference(
+                owner=payload["owner"],
+                repository=payload["repository"],
+                branch=payload.get("branch"),
+            )
+        elif isinstance(metadata.get("repository"), dict):
+            metadata_repository = metadata["repository"]
+            if metadata_repository.get("owner") and metadata_repository.get("repository"):
+                repository = RepositoryReference(
+                    owner=metadata_repository["owner"],
+                    repository=metadata_repository["repository"],
+                    branch=metadata_repository.get("branch"),
+                )
+        elif metadata.get("owner") and metadata.get("repository"):
+            repository = RepositoryReference(
+                owner=metadata["owner"],
+                repository=metadata["repository"],
+                branch=metadata.get("branch"),
+            )
 
         pull_request = None
         pr_payload = payload.get("pull_request")
@@ -65,6 +86,11 @@ async def execute(
             pull_request = PullRequestReference(
                 repository=repository,
                 pull_request_number=pr_payload["pull_request_number"],
+            )
+        elif repository is not None and payload.get("pull_request_number") is not None:
+            pull_request = PullRequestReference(
+                repository=repository,
+                pull_request_number=payload["pull_request_number"],
             )
 
         jira_issue = None
@@ -75,11 +101,18 @@ async def execute(
         agent_request = DeveloperAgentRequest(
             capability=request.capability,
             metadata=request.metadata,
-            query=payload.get("query"),
-            code=payload.get("code"),
+            query=(
+                payload.get("query")
+                or payload.get("search_query")
+                or payload.get("q")
+                or metadata.get("query")
+                or metadata.get("search_query")
+                or metadata.get("q")
+            ),
+            code=payload.get("code") or metadata.get("code"),
             path=payload.get("path"),
-            title=payload.get("title"),
-            description=payload.get("description"),
+            title=payload.get("title") or metadata.get("title"),
+            description=payload.get("description") or metadata.get("description"),
             repository=repository,
             pull_request=pull_request,
             jira_issue=jira_issue,
@@ -104,22 +137,22 @@ async def execute(
             detail=str(exc),
         ) from exc
 
-@router.get(
-    "/capabilities",
-)
+@router.get("/capabilities")
 async def capabilities(
     developer_agent: DeveloperAgent = Depends(
         get_developer_agent,
     ),
 ) -> dict:
-    """
-    Return supported Developer Agent capabilities.
-    """
 
     return {
-        "agent": developer_agent.name,
-        "description": developer_agent.description,
-        "capabilities": developer_agent.capabilities(),
+        "agent": "developer",
+        "description": "Developer Agent",
+        "capabilities": [
+            capability.value
+            if hasattr(capability, "value")
+            else str(capability)
+            for capability in developer_agent.supported_capabilities
+        ],
     }
 
 @router.get(
