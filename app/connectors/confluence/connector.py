@@ -627,3 +627,103 @@ class ConfluenceConnector:
             ),
             metadata=payload.copy(),
         )
+        
+        # ==========================================================
+    # Utilities
+    # ==========================================================
+
+    async def get_page_tree(
+        self,
+        page_id: str,
+    ) -> dict[str, Any]:
+        """
+        Retrieve a lightweight page hierarchy.
+
+        Returns the requested page and its immediate children.
+        """
+
+        page = await self.get_page(
+            page_id,
+            include_body=False,
+        )
+
+        children = await self.list_child_pages(
+            page_id,
+        )
+
+        return {
+            "page": page,
+            "children": children,
+        }
+
+    async def documentation_statistics(
+        self,
+        *,
+        space_key: str,
+    ) -> dict[str, Any]:
+        """
+        Generate documentation statistics for a space.
+        """
+
+        pages = await self.list_pages(
+            space_key=space_key,
+        )
+
+        return {
+            "space": space_key,
+            "total_pages": len(pages),
+            "pages_with_content": len(
+                [
+                    page
+                    for page in pages
+                    if page.body
+                ]
+            ),
+            "pages_without_content": len(
+                [
+                    page
+                    for page in pages
+                    if not page.body
+                ]
+            ),
+        }
+
+    async def connector_health(
+        self,
+    ) -> dict[str, Any]:
+        """
+        Perform a lightweight connector health check.
+        """
+
+        try:
+
+            spaces = await self.list_spaces(
+                limit=1,
+            )
+
+            return {
+                "healthy": True,
+                "spaces_accessible": len(spaces),
+            }
+
+        except Exception as exc:
+
+            return {
+                "healthy": False,
+                "error": str(exc),
+            }
+
+    # ==========================================================
+    # Lifecycle
+    # ==========================================================
+
+    async def close(
+        self,
+    ) -> None:
+        """
+        Release HTTP resources.
+        """
+
+        await self._client.close()
+        
+    

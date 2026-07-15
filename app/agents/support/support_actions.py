@@ -55,13 +55,15 @@ class SupportActions:
         self,
         request: SupportAgentRequest,
     ):
-        """
-        Search support tickets.
-        """
 
-        logger.debug("Searching support tickets.")
+        query = request.query
 
-        return await self._jira.search_issues(request)
+        if request.project_key:
+            query = f"project = {request.project_key}"
+
+        return await self._jira.search_issues(
+            query,
+        )
 
     async def create_ticket(
         self,

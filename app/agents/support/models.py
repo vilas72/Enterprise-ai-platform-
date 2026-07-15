@@ -48,7 +48,13 @@ class SupportAgentRequest(BaseModel):
     ticket_key: str | None = None
 
     project_key: str | None = None
-
+    
+    title: str | None = None
+    
+    description: str | None = None
+    
+    search_tickets: str | None = None
+    
     payload: dict[str, Any] = Field(
         default_factory=dict
     )
