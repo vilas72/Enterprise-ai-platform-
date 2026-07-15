@@ -95,16 +95,16 @@ class GitHubActions:
         Search GitHub repositories.
         """
 
-        if not request.query:
+        if not request.payload["query"]:
             raise ValueError("Search query is required.")
 
         logger.info(
             "Searching GitHub repositories: %s",
-            request.query,
+            request.payload["query"],
         )
 
         return await self._github.search_repositories(
-            query=request.query,
+            query=request.payload["query"],
         )
 
     # ------------------------------------------------------------------
@@ -121,7 +121,7 @@ class GitHubActions:
 
         repository = self._require_repository(request)
 
-        if not request.title:
+        if not request.payload["title"]:
             raise ValueError("Issue title is required.")
 
         logger.info(
@@ -133,7 +133,7 @@ class GitHubActions:
         return await self._github.create_issue(
             owner=repository.owner,
             repository=repository.repository,
-            title=request.title,
+            title=request.payload["title"],
             body=request.description,
         )
 

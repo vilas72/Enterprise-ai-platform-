@@ -6,10 +6,10 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from app.agents.developer.ai_actions import AIActions
+from app.actions.ai_actions import AIActions
 from app.agents.developer.developer_agent import DeveloperAgent
-from app.agents.developer.github_actions import GitHubActions
-from app.agents.developer.jira_actions import JiraActions
+from app.actions.github_actions import GitHubActions
+from app.actions.jira_actions import JiraActions
 
 from app.connectors.github.dependencies import (
     get_github_connector,
@@ -19,7 +19,7 @@ from app.connectors.jira.dependencies import (
 )
 
 from app.services.ai_service import AIService
-from app.dependencies.ai_dependencies import (
+from app.dependencies.service_dependencies import (
     get_ai_service,
 )
 

@@ -34,3 +34,10 @@ class Planner(ABC):
         Produce an execution plan.
         """
         raise NotImplementedError
+
+
+from app.agents.planner.rule_based_planner import RuleBasedPlanner
+
+
+class DefaultPlanner(RuleBasedPlanner):
+    """Backward-compatible default planner alias."""

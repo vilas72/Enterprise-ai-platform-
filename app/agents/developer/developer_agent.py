@@ -13,9 +13,9 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from app.agents.developer.ai_actions import AIActions
-from app.agents.developer.github_actions import GitHubActions
-from app.agents.developer.jira_actions import JiraActions
+from app.actions.ai_actions import AIActions
+from app.actions.github_actions import GitHubActions
+from app.actions.jira_actions import JiraActions
 from app.agents.developer.models import (
     DeveloperAgentRequest,
     DeveloperAgentResponse,
@@ -186,7 +186,7 @@ class DeveloperAgent:
                     request.capability
                 ]
 
-                result = await handler(request)
+                result = await handler(request.payload)
 
             #
             # Sync Capabilities
@@ -198,7 +198,7 @@ class DeveloperAgent:
                     request.capability
                 ]
 
-                result = handler(request)
+                result = handler(request.payload)
 
             else:
 
@@ -277,14 +277,31 @@ class DeveloperAgent:
 
     def supports(
         self,
-        capability: DeveloperCapability,
+        capability: DeveloperCapability | str,
     ) -> bool:
         """
         Determine whether the Developer Agent supports
         a capability.
         """
 
+        if isinstance(capability, str):
+            try:
+                capability = DeveloperCapability(capability)
+            except ValueError:
+                return False
+
         return (
             capability in self._async_handlers
             or capability in self._sync_handlers
         )
+
+    @property
+    def name(self) -> str:
+        return "developer"
+
+    @property
+    def description(self) -> str:
+        return "Enterprise Developer Agent for repository, PR, Jira and AI-assisted engineering workflows."
+
+    def capabilities(self) -> list[str]:
+        return [capability.value for capability in self.supported_capabilities]

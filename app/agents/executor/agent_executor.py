@@ -66,3 +66,7 @@ class AgentExecutor:
         )
 
         return result, summary
+
+
+class DefaultExecutor(AgentExecutor):
+    """Backward-compatible default executor alias."""

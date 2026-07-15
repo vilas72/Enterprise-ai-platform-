@@ -39,7 +39,24 @@ from app.api.routers.document_router import (
     router as document_router,
 )
 
+from app.api.routers.developer_router import (
+    router as developer_router,
+)
 
+from app.api.routers.knowledge_router import (
+    router as knowledge_router,
+)
+
+from app.api.routers.support_router import (
+    router as support_router,
+)
+
+from app.api.routers.devops_router import (
+    router as devops_router,
+)
+from app.api.routers.gateway_router import (
+    router as gateway_router,
+)
 
 configure_logging()
 
@@ -60,6 +77,11 @@ app.include_router(embedding_router)
 app.include_router(vector_router)
 app.include_router(rag_router)
 app.include_router(document_router)
+app.include_router(developer_router)
+app.include_router(knowledge_router)
+app.include_router(support_router)
+app.include_router(devops_router)
+app.include_router(gateway_router)
 
 register_exception_handlers(app)
 

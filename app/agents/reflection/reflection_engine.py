@@ -35,3 +35,7 @@ class ReflectionEngine:
         """
 
         return
+
+
+class DefaultReflectionEngine(ReflectionEngine):
+    """Backward-compatible default reflection engine alias."""
