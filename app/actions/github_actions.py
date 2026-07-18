@@ -57,10 +57,77 @@ class GitHubActions:
         Validate repository reference.
         """
 
-        if request.repository is None:
-            raise ValueError("Repository is required.")
+        if request.repository is not None:
+            return request.repository
 
-        return request.repository
+        metadata_repository = request.metadata.get("repository")
+        if isinstance(metadata_repository, dict):
+            owner = metadata_repository.get("owner")
+            repository = metadata_repository.get("repository")
+            if owner and repository:
+                return RepositoryReference(
+                    owner=owner,
+                    repository=repository,
+                    branch=metadata_repository.get("branch"),
+                )
+
+        owner = request.metadata.get("owner")
+        repository = request.metadata.get("repository")
+        if isinstance(owner, str) and isinstance(repository, str):
+            return RepositoryReference(
+                owner=owner,
+                repository=repository,
+                branch=request.metadata.get("branch"),
+            )
+
+        raise ValueError("Repository is required.")
+
+    @staticmethod
+    def _require_query(
+        request: DeveloperAgentRequest,
+    ) -> str:
+        """
+        Validate search query.
+        """
+
+        if request.query:
+            return request.query
+
+        for key in ("query", "search_query", "q"):
+            metadata_query = request.metadata.get(key)
+            if isinstance(metadata_query, str) and metadata_query:
+                return metadata_query
+
+        metadata_payload = request.metadata.get("payload")
+        if isinstance(metadata_payload, dict):
+            for key in ("query", "search_query", "q"):
+                payload_query = metadata_payload.get(key)
+                if isinstance(payload_query, str) and payload_query:
+                    return payload_query
+
+                if isinstance(payload_query, dict):
+                    nested_text = payload_query.get("text")
+                    if isinstance(nested_text, str) and nested_text:
+                        return nested_text
+
+        raise ValueError("Search query is required.")
+
+    @staticmethod
+    def _require_issue_title(
+        request: DeveloperAgentRequest,
+    ) -> str:
+        """
+        Validate issue title.
+        """
+
+        if request.title:
+            return request.title
+
+        metadata_title = request.metadata.get("title")
+        if isinstance(metadata_title, str) and metadata_title:
+            return metadata_title
+
+        raise ValueError("Issue title is required.")
 
     # ------------------------------------------------------------------
     # Repository Analysis
@@ -95,16 +162,15 @@ class GitHubActions:
         Search GitHub repositories.
         """
 
-        if not request.payload["query"]:
-            raise ValueError("Search query is required.")
+        query = self._require_query(request)
 
         logger.info(
             "Searching GitHub repositories: %s",
-            request.payload["query"],
+            query,
         )
 
         return await self._github.search_repositories(
-            query=request.payload["query"],
+            query=query,
         )
 
     # ------------------------------------------------------------------
@@ -120,9 +186,13 @@ class GitHubActions:
         """
 
         repository = self._require_repository(request)
+        title = self._require_issue_title(request)
 
-        if not request.payload["title"]:
-            raise ValueError("Issue title is required.")
+        body = request.description
+        if not body:
+            metadata_description = request.metadata.get("description")
+            if isinstance(metadata_description, str):
+                body = metadata_description
 
         logger.info(
             "Creating GitHub issue in %s/%s",
@@ -133,8 +203,8 @@ class GitHubActions:
         return await self._github.create_issue(
             owner=repository.owner,
             repository=repository.repository,
-            title=request.payload["title"],
-            body=request.description,
+            title=title,
+            body=body,
         )
 
     # ------------------------------------------------------------------
@@ -203,21 +273,22 @@ class GitHubActions:
 
         repository = self._require_repository(request)
 
+        owner = repository.owner
         logger.info(
             "Generating repository health report for %s/%s",
-            repository.owner,
+            owner,
             repository.repository,
         )
 
         result = await self._github.repository_health(
-            owner=repository.owner,
+            owner=owner,
             repository=repository.repository,
         )
 
         summary = result.get("summary", {})
 
         return RepositoryHealthReport(
-            repository=f"{repository.owner}/{repository.repository}",
+            repository=f"{owner}/{repository.repository}",
             open_pull_requests=summary.get("open_pull_requests", 0),
             open_issues=summary.get("open_issues", 0),
             stale_pull_requests=summary.get(

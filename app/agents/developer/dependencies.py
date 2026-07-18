@@ -24,7 +24,6 @@ from app.dependencies.service_dependencies import (
 )
 
 
-@lru_cache
 def get_github_actions() -> GitHubActions:
     """
     Return GitHubActions singleton.
@@ -56,7 +55,6 @@ def get_ai_actions() -> AIActions:
     )
 
 
-@lru_cache
 def get_developer_agent() -> DeveloperAgent:
     """
     Return DeveloperAgent singleton.

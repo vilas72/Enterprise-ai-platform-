@@ -9,6 +9,7 @@ from functools import lru_cache
 from app.agents.developer.dependencies import get_developer_agent
 from app.agents.knowledge.dependencies import get_knowledge_agent
 from app.agents.support.dependencies import get_support_agent
+from app.agents.devops.dependencies import get_devops_agent
 
 from app.gateway.gateway import EnterpriseGateway
 from app.gateway.registry import GatewayRegistry
@@ -36,6 +37,11 @@ def get_gateway_registry() -> GatewayRegistry:
     registry.register(
         "support",
         get_support_agent(),
+    )
+    
+    registry.register(
+        "devops",
+        get_devops_agent(),
     )
 
     return registry

@@ -57,15 +57,13 @@ class JiraActions:
         Validate project key.
         """
 
-        project_key = request.metadata.get("project_key")
+        project_key = request.project_key
 
         if not project_key:
-            raise ValueError(
-                "project_key is required."
-            )
+            raise ValueError("project_key is required.")
 
         return project_key
-
+    
     @staticmethod
     def _require_issue(
         request: DeveloperAgentRequest,
@@ -145,11 +143,6 @@ class JiraActions:
             request
         )
 
-        if not request.title:
-            raise ValueError(
-                "Issue title is required."
-            )
-
         logger.info(
             "Creating Jira Story in project %s",
             project_key,
@@ -222,3 +215,20 @@ class JiraActions:
             )
 
         return await handler(request)
+    
+    async def search_issues(
+        self,
+        query: str,
+    ):
+        """
+        Search Jira issues using JQL.
+        """
+
+        logger.info(
+            "Searching Jira issues: %s",
+            query,
+        )
+
+        return await self._jira.search_issues(
+            jql=query,
+        )

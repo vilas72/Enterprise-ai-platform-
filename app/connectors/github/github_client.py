@@ -36,14 +36,19 @@ class GitHubClient:
         token: str,
         timeout: float = DEFAULT_TIMEOUT,
     ) -> None:
+        headers: dict[str, str] = {
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+
+        cleaned_token = token.strip()
+        if cleaned_token:
+            headers["Authorization"] = f"Bearer {cleaned_token}"
+
         self._client = httpx.AsyncClient(
             base_url=base_url,
             timeout=timeout,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28",
-            },
+            headers=headers,
         )
 
     async def close(self) -> None:
@@ -87,7 +92,7 @@ class GitHubClient:
             json=json,
         )
 
-        response.raise_for_status()
+        self._raise_for_status(response)
 
         if response.status_code == 204:
             return {}
@@ -132,7 +137,7 @@ class GitHubClient:
 
         response = await self._client.delete(url)
 
-        response.raise_for_status()
+        self._raise_for_status(response)
         
     async def put(
         self,
@@ -149,7 +154,7 @@ class GitHubClient:
             json=json,
         )
 
-        response.raise_for_status()
+        self._raise_for_status(response)
 
         return response.json()
     

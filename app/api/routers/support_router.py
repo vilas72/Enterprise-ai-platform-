@@ -41,6 +41,9 @@ async def execute(
             query=payload.get("query"),
             ticket_key=payload.get("ticket_key"),
             project_key=payload.get("project_key"),
+            title=payload.get("title"),
+            description=payload.get("description"),
+            search_issues=payload.get("search_issues"),
         )
 
         response = await support_agent.execute(

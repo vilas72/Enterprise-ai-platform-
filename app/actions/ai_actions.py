@@ -53,10 +53,19 @@ class AIActions:
         Validate source code.
         """
 
-        if not request.code:
-            raise ValueError("Code is required.")
+        if request.code:
+            return request.code
 
-        return request.code
+        # Backward-compatible fallbacks for older caller payloads.
+        for key in ("code", "source_code", "content"):
+            value = request.metadata.get(key)
+            if isinstance(value, str) and value:
+                return value
+
+        if request.description:
+            return request.description
+
+        raise ValueError("Code is required.")
 
     def _generate(
         self,
@@ -72,7 +81,14 @@ class AIActions:
             )
         )
 
-        return response.text
+        if hasattr(response, "response") and isinstance(response.response, str):
+            return response.response
+
+        # Backward compatibility for legacy response contracts.
+        if hasattr(response, "text") and isinstance(response.text, str):
+            return response.text
+
+        raise ValueError("AI provider returned an unsupported response shape.")
 
     # ---------------------------------------------------------
     # Explain Code

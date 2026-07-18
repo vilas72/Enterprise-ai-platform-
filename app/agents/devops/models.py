@@ -9,6 +9,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.agents.developer.models import RepositoryReference
+
 
 class DevOpsCapability(str, Enum):
     """
@@ -41,7 +43,7 @@ class DevOpsAgentRequest(BaseModel):
 
     capability: DevOpsCapability
 
-    repository: str | None = None
+    repository: RepositoryReference | None = None
 
     owner: str | None = None
 

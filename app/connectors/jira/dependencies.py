@@ -15,7 +15,7 @@ def get_jira_client() -> JiraClient:
     """
 
     settings = get_settings()
-    base_url = os.getenv("JIRA_BASE_URL") or "https://example.atlassian.net"
+    base_url = os.getenv("JIRA_BASE_URL") or "https://vilasrajage7289.atlassian.net/"
     email = os.getenv("JIRA_EMAIL") or ""
     api_token = os.getenv("JIRA_API_TOKEN") or ""
     timeout_value = os.getenv("JIRA_TIMEOUT")

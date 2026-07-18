@@ -101,10 +101,15 @@ class EnterpriseGateway:
             #
             # Execute
             #
-
+            
             agent_request = self._router.build_agent_request(
                 agent=agent,
                 request=request,
+            )
+            
+            logger.info(
+                "Agent request type: %s",
+                type(agent_request),
             )
 
             result = await self._execute_agent(
@@ -166,20 +171,7 @@ class EnterpriseGateway:
         agent: Any,
         request: Any,
     ) -> Any:
-   
-        """
-        Execute the selected business agent.
-        """
-
-        logger.debug(
-            "Executing agent '%s'.",
-            agent.__class__.__name__,
-        )
-
-        return await agent.execute(
-            request,
-        )
-
+        return await agent.execute(request)
     # ==========================================================
     # Validation
     # ==========================================================

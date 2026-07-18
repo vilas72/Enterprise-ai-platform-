@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 from typing import Any
 
+from fastapi import logger
 import httpx
 
 from app.connectors.jira.exceptions import (
@@ -175,7 +176,12 @@ class JiraClient:
                     "Jira server error."
                 ) from exc
 
+            logger.logger.error(
+                "Jira request failed with status %s: %s",
+                status,
+                response.text,
+            )
+
             raise JiraRequestError(
-                "Jira request failed.",
-                status_code=status,
+                f"Jira request failed: {response.text}"
             ) from exc

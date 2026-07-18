@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from asyncio.log import logger
 from datetime import datetime
+import json
 from typing import Any
 
 from app.connectors.jira.jira_client import JiraClient
@@ -157,17 +159,31 @@ class JiraConnector:
         """
 
         response = await self._client.post(
-            "/rest/api/3/search",
-            json={
-                "jql": jql,
-                "startAt": start_at,
-                "maxResults": max_results,
-            },
+              "/rest/api/3/search/jql",
+              json={
+                    "jql": jql,
+                    "maxResults": 50,
+                    "fields": [
+                        "summary",
+                        "project",
+                        "issuetype",
+                        "status",
+                        "priority",
+                        "assignee",
+                        "reporter",
+                        "created",
+                        "updated",
+                        "labels",
+                        "description",
+                    ],
+                },
         )
+
+        issues = response.get("issues", [])
 
         return [
             self._to_issue(issue)
-            for issue in response.get("issues", [])
+            for issue in issues
         ]
 
     async def create_issue(
@@ -210,6 +226,10 @@ class JiraConnector:
             fields["assignee"] = {
                 "accountId": assignee,
             }
+            
+        logger.info("Jira Create Issue Payload:")
+        logger.info(json.dumps(fields, indent=2))
+        
 
         response = await self._client.post(
             "/rest/api/3/issue",
@@ -217,7 +237,10 @@ class JiraConnector:
                 "fields": fields,
             },
         )
-
+        
+        logger.info("Jira Create Issue Response:")
+        logger.info(json.dumps(response, indent=2))
+        
         return await self.get_issue(
             response["key"]
         )
@@ -601,10 +624,23 @@ class JiraConnector:
         """
 
         response = await self._client.post(
-            "/rest/api/3/search",
+            "/rest/api/3/search/jql",
             json={
-                "jql": f"project={project_key}",
-                "maxResults": 0,
+                "jql": jql,
+                "maxResults": 50,
+                "fields": [
+                    "summary",
+                    "project",
+                    "issuetype",
+                    "status",
+                    "priority",
+                    "assignee",
+                    "reporter",
+                    "created",
+                    "updated",
+                    "labels",
+                    "description",
+                ],
             },
         )
 
