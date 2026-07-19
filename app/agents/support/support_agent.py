@@ -83,7 +83,7 @@ class SupportAgent:
 
         logger.info(
             "Executing support capability '%s'",
-            request.capability.value,
+             request.capability.value,
         )
 
         metadata = SupportExecutionMetadata()
@@ -107,7 +107,7 @@ class SupportAgent:
                 )
 
             result = await handler(request)
-
+            logger.info("Handler result: %s", result)
             return SupportAgentResponse(
                 success=True,
                 capability=request.capability,

@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 
 from app.domain.exceptions.ai_provider_exception import AIProviderException
 
+import traceback
 
 def register_exception_handlers(app):
 

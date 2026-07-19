@@ -121,9 +121,8 @@ class GatewayRegistry:
 
         for agent in self._agents.values():
 
-            if agent.supports(capability):
-
-                return agent
+            if hasattr(agent, "supports") and agent.supports(capability):
+               return agent
 
         raise AgentNotFoundError(
             f"No registered agent supports "
@@ -201,3 +200,21 @@ class GatewayRegistry:
     ) -> bool:
 
         return self.exists(name)
+    
+    def agent_names(
+        self,
+    ) -> list[str]:
+        """
+        Return all registered agent names.
+        """
+
+        return self.names()
+    
+    def registered_agents(
+        self,
+    ) -> dict[str, Any]:
+        """
+        Return registered agents.
+        """
+
+        return self._agents.copy()

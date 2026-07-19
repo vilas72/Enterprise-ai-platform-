@@ -97,7 +97,8 @@ class JiraIssueReference(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     issue_key: str
-
+   
+    
 
 class DeveloperAgentRequest(BaseModel):
     """
@@ -130,6 +131,9 @@ class DeveloperAgentRequest(BaseModel):
         default_factory=dict,
     )
 
+    project_key: str | None = None
+    
+    transition_id: str | None = None
 
 class DeveloperExecutionMetadata(BaseModel):
     """

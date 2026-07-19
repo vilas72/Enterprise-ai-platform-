@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
+import logging
 
 from httpx import HTTPStatusError
 from .exceptions import (
@@ -16,6 +17,7 @@ from .exceptions import (
     GitHubRequestError,
 )
 
+logger = logging.getLogger(__name__)
 
 class GitHubClient:
     """
@@ -44,7 +46,9 @@ class GitHubClient:
         cleaned_token = token.strip()
         if cleaned_token:
             headers["Authorization"] = f"Bearer {cleaned_token}"
-
+        logger.info("GitHub Token Present: %s", bool(cleaned_token))
+        logger.info("GitHub Token Length: %d", len(cleaned_token))
+        
         self._client = httpx.AsyncClient(
             base_url=base_url,
             timeout=timeout,

@@ -1,53 +1,39 @@
 """
-Planner response parser.
+Planner parser.
 """
 
 from __future__ import annotations
 
-import json
-
-from app.agents.models.agent_plan import AgentPlan
-from app.agents.models.agent_step import AgentStep
 from app.agents.planner.llm.planner_schema import (
-    PlannerResponseSchema,
+    PlannerSchema,
+)
+from app.agents.planner.planner_result import (
+    PlannerResult,
+    PlannerStep,
 )
 
 
 class PlannerParser:
     """
-    Converts LLM JSON into AgentPlan.
+    Converts LLM output into PlannerResult.
     """
 
+    @staticmethod
     def parse(
-        self,
-        response: str,
-    ) -> AgentPlan:
+        schema: PlannerSchema,
+    ) -> PlannerResult:
 
-        payload = json.loads(response)
-
-        schema = PlannerResponseSchema.model_validate(
-            payload
-        )
-
-        steps: list[AgentStep] = []
-
-        for index, step in enumerate(
-            schema.steps,
-            start=1,
-        ):
-
-            steps.append(
-                AgentStep(
-                    id=index,
-                    name=step.name,
-                    description=step.description,
-                    action=step.action,
-                )
-            )
-
-        return AgentPlan(
-            goal="",
-            reasoning=schema.reasoning,
+        return PlannerResult(
+            planner="llm",
+            selected_agent=schema.agent,
+            capability=schema.capability,
             confidence=schema.confidence,
-            steps=steps,
+            reasoning=schema.reasoning,
+            workflow=[
+                PlannerStep(
+                    order=1,
+                    agent=schema.agent,
+                    capability=schema.capability,
+                )
+            ],
         )

@@ -1,5 +1,7 @@
 from app.bootstrap.provider_bootstrap import register_providers
+from app.bootstrap.event_bootstrap import initialize_events
 from app.core.config import settings
+
 
 from fastapi import FastAPI
 
@@ -61,6 +63,8 @@ from app.api.routers.gateway_router import (
 configure_logging()
 
 logger = get_logger(__name__)
+register_providers()
+initialize_events()
 
 app = FastAPI(
     title="Enterprise AI Platform",

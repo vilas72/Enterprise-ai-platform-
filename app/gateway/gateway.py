@@ -14,11 +14,17 @@ The gateway intentionally contains no business logic.
 """
 
 from __future__ import annotations
+from app.gateway.router import GatewayRouter
+from app.workflow.workflow_builder import WorkflowBuilder
+from app.workflow.workflow_engine import WorkflowEngine
 
 import logging
-from datetime import datetime
+
 from typing import Any
 
+from app.events.event_publisher import EventPublisher
+
+from app.agents.planner.planner import Planner
 from app.gateway.exceptions import (
     GatewayExecutionError,
 )
@@ -27,7 +33,10 @@ from app.gateway.models import (
     GatewayRequest,
     GatewayResponse,
 )
-from app.gateway.router import GatewayRouter
+
+from app.events.models.event import Event
+from app.events.models.event_metadata import EventMetadata
+from app.events.models.event_type import EventType
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +50,18 @@ class EnterpriseGateway:
 
     def __init__(
         self,
+        planner: Planner,
         router: GatewayRouter,
+        workflow_builder: WorkflowBuilder,
+        workflow_engine: WorkflowEngine,
+        publisher: EventPublisher,
     ) -> None:
 
+        self._planner = planner
         self._router = router
+        self._workflow_builder = workflow_builder
+        self._workflow_engine = workflow_engine
+        self._publisher = publisher
 
     # ==========================================================
     # Public API
@@ -57,17 +74,25 @@ class EnterpriseGateway:
         """
         Execute an enterprise request.
         """
-
-        logger.info(
-            "Gateway received capability '%s'.",
-            request.capability,
+        
+        await self._publisher.publish(
+            Event(
+                event_type=EventType.GATEWAY_STARTED,
+                metadata=EventMetadata(
+                    correlation_id = request.correlation_id or request.request_id,
+                    source="EnterpriseGateway",
+                ),
+                payload={
+                    "capability": request.capability,
+                    "execution_mode": request.execution_mode.value,
+                    "user_id": request.user_id,
+                }
+            )
         )
 
         metadata = GatewayExecutionMetadata(
             execution_mode=request.execution_mode,
         )
-
-        started = datetime.utcnow()
 
         try:
 
@@ -87,91 +112,100 @@ class EnterpriseGateway:
             )
 
             #
-            # Route
+            # Planning
             #
 
-            agent = await self._router.route(
-                request,
+            plan = await self._planner.plan(request)
+
+            metadata.selected_agent = plan.selected_agent
+
+            logger.info(
+                "Planner selected '%s' for '%s'",
+                plan.selected_agent,
+                plan.capability,
             )
 
-            metadata.selected_agent = (
-                agent.__class__.__name__
+            #
+            # Build Workflow
+            #
+
+            workflow = self._workflow_builder.build(
+                plan,
             )
 
             #
-            # Execute
+            # Execute Workflow
             #
-            
-            agent_request = self._router.build_agent_request(
-                agent=agent,
+
+            workflow_result = await self._workflow_engine.execute(
+                workflow=workflow,
                 request=request,
             )
-            
-            logger.info(
-                "Agent request type: %s",
-                type(agent_request),
-            )
 
-            result = await self._execute_agent(
-                agent=agent,
-                request=agent_request,
-            )
             #
-            # Metrics
+            # Populate Gateway Metadata
             #
 
-            completed = datetime.utcnow()
-
-            metadata.execution_completed_at = (
-                completed
-            )
-
-            metadata.execution_time_ms = (
-                completed - started
-            ).total_seconds() * 1000
+            metadata.execution_started_at = workflow_result.started_at
+            metadata.execution_completed_at = workflow_result.completed_at
+            metadata.execution_time_ms = workflow_result.execution_time_ms
 
             logger.info(
-                "Gateway execution completed."
+                "Gateway execution completed in %.2f ms.",
+                workflow_result.execution_time_ms,
             )
 
+            await self._publisher.publish(
+                Event(
+                    event_type=EventType.GATEWAY_COMPLETED,
+                    metadata=EventMetadata(
+                        workflow_id=workflow.id,
+                        execution_id=workflow_result.execution_id,
+                        correlation_id = request.correlation_id or request.request_id,
+                        source="EnterpriseGateway",
+                    ),
+                    payload={
+                        "success": workflow_result.success,
+                        "selected_agent": plan.selected_agent,
+                        "capability": plan.capability,
+                        "execution_time_ms": workflow_result.execution_time_ms,
+                    }
+                )
+            )
             return GatewayResponse(
-                success=True,
-                message="Execution completed successfully.",
-                result=result,
+                success=workflow_result.success,
+                message=(
+                    "Execution completed successfully."
+                    if workflow_result.success
+                    else workflow_result.error or "Execution failed."
+                ),
+                result=workflow_result.result,
                 metadata=metadata,
             )
 
         except Exception as exc:
 
-            completed = datetime.utcnow()
-
-            metadata.execution_completed_at = (
-                completed
-            )
-
-            metadata.execution_time_ms = (
-                completed - started
-            ).total_seconds() * 1000
-
             logger.exception(
                 "Gateway execution failed."
             )
-
+            await self._publisher.publish(
+                Event(
+                    event_type=EventType.GATEWAY_FAILED,
+                    metadata=EventMetadata(
+                        correlation_id = request.correlation_id or request.request_id,
+                        source="EnterpriseGateway",
+                    ),
+                    payload={
+                        "success": False,
+                        "capability": request.capability,
+                        "error": str(exc),
+                    },
+                )
+            )
             raise GatewayExecutionError(
-                str(exc),
+                f"Workflow execution failed: {exc}",
             ) from exc
-
-    # ==========================================================
-    # Agent Execution
-    # ==========================================================
-
-    async def _execute_agent(
-        self,
-        *,
-        agent: Any,
-        request: Any,
-    ) -> Any:
-        return await agent.execute(request)
+        
     # ==========================================================
     # Validation
     # ==========================================================

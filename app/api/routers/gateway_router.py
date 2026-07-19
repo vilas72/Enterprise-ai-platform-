@@ -45,7 +45,7 @@ async def execute(
 
     try:
 
-        gateway_request = GatewayRequest(
+        request = GatewayRequest(
             capability=request.capability,
             execution_mode=request.execution_mode,
             payload=request.payload,
@@ -53,7 +53,7 @@ async def execute(
         )
 
         result = await gateway.execute(
-            gateway_request,
+            request,
         )
 
         return GatewayResponseAPI(

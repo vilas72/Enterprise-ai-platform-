@@ -181,6 +181,7 @@ class DeveloperAgent:
             #
 
             if request.capability in self._async_handlers:
+                logger.info("Developer Request: %s", request.model_dump())
 
                 handler = self._async_handlers[
                     request.capability

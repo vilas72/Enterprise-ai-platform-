@@ -1,27 +1,59 @@
 """
-Planner execution result.
+Planner result models.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
-from app.agents.models.agent_plan import AgentPlan
+from pydantic import BaseModel, ConfigDict, Field
 
 
-@dataclass(slots=True)
-class PlannerResult:
+class PlannerStep(BaseModel):
     """
-    Result produced by the Planner.
+    Single execution step.
     """
 
-    success: bool
+    model_config = ConfigDict(extra="forbid")
 
-    plan: AgentPlan
+    order: int
 
-    reasoning: str = ""
+    agent: str
 
-    confidence: float = 1.0
+    capability: str
 
-    metadata: dict[str, Any] | None = None
+    payload: dict[str, Any] = Field(
+        default_factory=dict,
+    )
+
+
+class PlannerResult(BaseModel):
+    """
+    Planner execution result.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    planner: str
+
+    selected_agent: str
+
+    capability: str
+
+    confidence: float = Field(
+        default=1.0,
+        ge=0,
+        le=1,
+    )
+
+    reasoning: str | None = None
+
+    workflow: list[PlannerStep] = Field(
+        default_factory=list,
+    )
+
+    requires_reflection: bool = False
+
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+    )

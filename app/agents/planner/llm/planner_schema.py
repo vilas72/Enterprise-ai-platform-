@@ -1,31 +1,18 @@
 """
-Planner response schema.
+Planner structured output schema.
 """
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
-class PlannerStepSchema(BaseModel):
-    """
-    Step returned by the LLM planner.
-    """
+class PlannerSchema(BaseModel):
 
-    name: str = Field(...)
+    agent: str
 
-    description: str = Field(...)
+    capability: str
 
-    action: str = Field(...)
-
-
-class PlannerResponseSchema(BaseModel):
-    """
-    Structured response returned by the planner.
-    """
+    confidence: float
 
     reasoning: str
-
-    confidence: float = 1.0
-
-    steps: list[PlannerStepSchema]

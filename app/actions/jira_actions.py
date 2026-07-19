@@ -205,6 +205,7 @@ class JiraActions:
             "create_jira_bug": self.create_bug,
             "create_jira_story": self.create_story,
             "transition_jira_issue": self.transition_issue,
+            "update_jira_issue": self.update_issue,
         }
 
         handler = handlers.get(capability)
@@ -231,4 +232,30 @@ class JiraActions:
 
         return await self._jira.search_issues(
             jql=query,
+        )
+        
+    async def update_issue(
+        self,
+        *,
+        issue_key: str,
+        summary: str | None = None,
+        description: str | None = None,
+        priority: JiraPriority | None = None,
+        labels: list[str] | None = None,
+    ) -> JiraIssue:
+        """
+        Update an existing Jira issue.
+        """
+
+        logger.info(
+            "Updating Jira issue %s",
+            issue_key,
+        )
+
+        return await self._jira.update_issue(
+            issue_key=issue_key,
+            summary=summary,
+            description=description,
+            priority=priority,
+            labels=labels,
         )

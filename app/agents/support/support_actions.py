@@ -61,6 +61,8 @@ class SupportActions:
         if request.project_key:
             query = f"project = {request.project_key}"
 
+        logger.info("Jira returned %d issues", len(await self._jira.search_issues(query)))
+        
         return await self._jira.search_issues(
             query,
         )
@@ -87,7 +89,11 @@ class SupportActions:
 
         logger.debug("Updating support ticket.")
 
-        return await self._jira.update_issue(request)
+        return await self._jira.update_issue(
+            issue_key=request.ticket_key,
+            summary=request.title,
+            description=request.description, 
+        )
 
     async def transition_ticket(
         self,

@@ -1,49 +1,45 @@
 """
-Enterprise LLM Planner.
+LLM Planner.
 """
 
 from __future__ import annotations
 
-from app.agents.models.agent_context import AgentContext
-from app.agents.models.agent_request import AgentRequest
-from app.agents.planner.llm.planner_parser import PlannerParser
-from app.agents.planner.llm.planner_prompt import PlannerPrompt
+import logging
+from typing import Any
+
 from app.agents.planner.planner import Planner
 from app.agents.planner.planner_result import PlannerResult
-from app.services.ai_service import AIService
+from app.agents.planner.rule_based_planner import (
+    RuleBasedPlanner,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class LLMPlanner(Planner):
     """
-    Planner powered by an LLM.
+    Enterprise LLM Planner.
 
-    This implementation will evolve to support
-    GPT-5, Claude, Gemini, DeepSeek, etc.
+    Currently falls back to the rule-based planner.
     """
 
-    def __init__(
-        self,
-        ai_service: AIService,
-        parser: PlannerParser,
-    ) -> None:
+    def __init__(self) -> None:
+        self._fallback = RuleBasedPlanner()
 
-        self._ai_service = ai_service
-        self._parser = parser
-
-    def create_plan(
+    async def plan(
         self,
-        request: AgentRequest,
-        context: AgentContext,
+        request: Any,
     ) -> PlannerResult:
 
-        #
-        # Next step:
-        # Build GenerateRequest
-        # Invoke AIService
-        # Parse structured response
-        #
-
-        raise NotImplementedError(
-            "LLM planner integration will be implemented "
-            "after tool-aware planning is introduced."
+        logger.info(
+            "LLM planner invoked. Using rule-based fallback."
         )
+
+        # TODO
+        # Replace with AI Runtime
+        # OpenAI
+        # Azure OpenAI
+        # Anthropic
+        # Gemini
+
+        return await self._fallback.plan(request)

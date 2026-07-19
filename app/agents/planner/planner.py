@@ -1,43 +1,27 @@
 """
-Enterprise Agent Planner.
+Enterprise Planner interface.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Any
 
-from app.agents.models.agent_context import AgentContext
-from app.agents.models.agent_request import AgentRequest
 from app.agents.planner.planner_result import PlannerResult
 
 
 class Planner(ABC):
     """
-    Responsible for converting a user request into
-    an executable AgentPlan.
-
-    Future implementations:
-
-    - RuleBasedPlanner
-    - LLMPlanner
-    - WorkflowPlanner
-    - LangGraphPlanner
+    Planner interface.
     """
 
     @abstractmethod
-    def create_plan(
+    async def plan(
         self,
-        request: AgentRequest,
-        context: AgentContext,
+        request: Any,
     ) -> PlannerResult:
         """
-        Produce an execution plan.
+        Build an execution plan.
         """
+
         raise NotImplementedError
-
-
-from app.agents.planner.rule_based_planner import RuleBasedPlanner
-
-
-class DefaultPlanner(RuleBasedPlanner):
-    """Backward-compatible default planner alias."""
