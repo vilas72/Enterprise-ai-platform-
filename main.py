@@ -63,8 +63,6 @@ from app.api.routers.gateway_router import (
 configure_logging()
 
 logger = get_logger(__name__)
-register_providers()
-initialize_events()
 
 app = FastAPI(
     title="Enterprise AI Platform",
@@ -95,6 +93,7 @@ def main():
     logger.info("Starting Enterprise AI Platform...")
 
     register_providers()
+    initialize_events()
 
     logger.info("Provider registration completed.")
     logger.info(f"Default Provider : {settings.default_provider}")

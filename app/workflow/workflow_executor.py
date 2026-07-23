@@ -15,6 +15,8 @@ from app.events.models.event import Event
 from app.events.models.event_metadata import EventMetadata
 from app.events.models.event_type import EventType
 
+from app.workflow.hooks.workflow_hook_manager import WorkflowHookManager
+
 
 class WorkflowExecutor:
     """
@@ -25,9 +27,11 @@ class WorkflowExecutor:
         self,
         runtime: AgentRuntime,
         publisher: EventPublisher,
+        hooks: WorkflowHookManager,
     ) -> None:
         self._runtime = runtime
         self._publisher = publisher
+        self._hooks = hooks
 
     async def execute(
         self,
@@ -45,6 +49,10 @@ class WorkflowExecutor:
             for step in workflow.steps:
 
                 context.current_step = step.id
+                await self._hooks.before_step(
+                    context=context,
+                    step_id=step.id,
+                )
                 step.status = WorkflowStepStatus.RUNNING
 
                 await self._publisher.publish(
@@ -64,12 +72,25 @@ class WorkflowExecutor:
                     )
                 )
 
-                runtime_result = await self._runtime.execute(
-                    agent=step.agent,
-                    capability=step.capability,
-                    request=context.request,
-                    workflow_id=context.workflow_id,
-                )
+                runtime_result = None
+
+                for attempt in range(step.retry_policy.max_attempts):
+
+                    runtime_result = await self._runtime.execute(
+                        agent=step.agent,
+                        capability=step.capability,
+                        request=context.request,
+                        workflow_id=context.workflow_id,
+                    )
+
+                    if runtime_result.success:
+                        break 
+                
+                step.outputs = {
+                    "success": runtime_result.success,
+                    "result": runtime_result.result,
+                    "error": runtime_result.error,
+                }
 
                 # Step failed
                 if not runtime_result.success:
@@ -129,6 +150,11 @@ class WorkflowExecutor:
                     runtime_result,
                 )
 
+                context.set_variable(
+                    step.id,
+                    runtime_result.result,
+                )
+
                 # Save latest successful result
                 final_result = runtime_result.result
 
@@ -172,4 +198,10 @@ class WorkflowExecutor:
                 error=f"Workflow execution failed: {exc}",
                 step_results=context.step_results,
                 metadata=context.metadata,
+            )
+            
+        finally:
+            await self._hooks.after_step(
+                context=context,
+                step_id=step.id,
             )

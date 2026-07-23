@@ -89,3 +89,8 @@ class WorkflowContext(BaseModel):
         """
 
         return self.step_results.get(step_id)
+    
+    def clear(self) -> None:
+        self.variables.clear()
+        self.step_results.clear()
+        self.metadata.clear()

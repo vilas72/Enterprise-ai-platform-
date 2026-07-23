@@ -626,7 +626,7 @@ class JiraConnector:
         response = await self._client.post(
             "/rest/api/3/search/jql",
             json={
-                "jql": jql,
+                "jql": jql, # type: ignore
                 "maxResults": 50,
                 "fields": [
                     "summary",

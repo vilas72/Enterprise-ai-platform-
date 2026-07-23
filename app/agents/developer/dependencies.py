@@ -19,9 +19,6 @@ from app.connectors.jira.dependencies import (
 )
 
 from app.services.ai_service import AIService
-from app.dependencies.service_dependencies import (
-    get_ai_service,
-)
 
 
 def get_github_actions() -> GitHubActions:
@@ -48,6 +45,8 @@ def get_ai_actions() -> AIActions:
     """
     Return AIActions singleton.
     """
+    from app.dependencies.service_dependencies import get_ai_service
+     
     ai_service: AIService = get_ai_service()
 
     return AIActions(

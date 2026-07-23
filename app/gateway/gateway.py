@@ -14,22 +14,23 @@ The gateway intentionally contains no business logic.
 """
 
 from __future__ import annotations
+from datetime import datetime
+
+from app.gateway.registry import GatewayRegistry
 from app.gateway.router import GatewayRouter
-from app.workflow.workflow_builder import WorkflowBuilder
-from app.workflow.workflow_engine import WorkflowEngine
+from app.workflow.workflow_service import WorkflowService
+from app.events.event_publisher import EventPublisher
 
 import logging
 
 from typing import Any
 
-from app.events.event_publisher import EventPublisher
-
-from app.agents.planner.planner import Planner
 from app.gateway.exceptions import (
     GatewayExecutionError,
 )
 from app.gateway.models import (
     GatewayExecutionMetadata,
+    GatewayExecutionMode,
     GatewayRequest,
     GatewayResponse,
 )
@@ -37,6 +38,7 @@ from app.gateway.models import (
 from app.events.models.event import Event
 from app.events.models.event_metadata import EventMetadata
 from app.events.models.event_type import EventType
+
 
 logger = logging.getLogger(__name__)
 
@@ -50,18 +52,14 @@ class EnterpriseGateway:
 
     def __init__(
         self,
-        planner: Planner,
-        router: GatewayRouter,
-        workflow_builder: WorkflowBuilder,
-        workflow_engine: WorkflowEngine,
+        workflow_service: WorkflowService,        
         publisher: EventPublisher,
+        registry: GatewayRegistry,
     ) -> None:
 
-        self._planner = planner
-        self._router = router
-        self._workflow_builder = workflow_builder
-        self._workflow_engine = workflow_engine
+        self._workflow_service = workflow_service
         self._publisher = publisher
+        self._registry = registry
 
     # ==========================================================
     # Public API
@@ -74,136 +72,75 @@ class EnterpriseGateway:
         """
         Execute an enterprise request.
         """
-        
-        await self._publisher.publish(
-            Event(
-                event_type=EventType.GATEWAY_STARTED,
-                metadata=EventMetadata(
-                    correlation_id = request.correlation_id or request.request_id,
-                    source="EnterpriseGateway",
-                ),
-                payload={
-                    "capability": request.capability,
-                    "execution_mode": request.execution_mode.value,
-                    "user_id": request.user_id,
-                }
-            )
-        )
+
+        await self._publish_started(request)
 
         metadata = GatewayExecutionMetadata(
             execution_mode=request.execution_mode,
+            governance_approved=False,
         )
 
         try:
-
             #
             # Validation
             #
-
             self._validate_request(request)
 
             #
             # Governance
             #
-
-            await self._authorize(
-                request,
-                metadata,
-            )
-
-            #
-            # Planning
-            #
-
-            plan = await self._planner.plan(request)
-
-            metadata.selected_agent = plan.selected_agent
-
-            logger.info(
-                "Planner selected '%s' for '%s'",
-                plan.selected_agent,
-                plan.capability,
-            )
-
-            #
-            # Build Workflow
-            #
-
-            workflow = self._workflow_builder.build(
-                plan,
-            )
+            await self._authorize(metadata)
 
             #
             # Execute Workflow
             #
-
-            workflow_result = await self._workflow_engine.execute(
-                workflow=workflow,
+            workflow_result = await self._workflow_service.execute(
                 request=request,
             )
 
-            #
-            # Populate Gateway Metadata
-            #
-
-            metadata.execution_started_at = workflow_result.started_at
-            metadata.execution_completed_at = workflow_result.completed_at
-            metadata.execution_time_ms = workflow_result.execution_time_ms
+            metadata = GatewayExecutionMetadata.from_workflow(
+                workflow_result=workflow_result,
+                execution_mode=GatewayExecutionMode.WORKFLOW,
+                selected_agent=getattr(
+                    workflow_result,
+                    "selected_agent",
+                    None,
+                ),
+            )
 
             logger.info(
-                "Gateway execution completed in %.2f ms.",
-                workflow_result.execution_time_ms,
+                "Gateway execution completed.",
+                extra={
+                    "workflow_id": workflow_result.workflow_id,
+                    "execution_id": workflow_result.execution_id,
+                    "capability": workflow_result.requested_capability,
+                    "agent": workflow_result.selected_agent,
+                    "execution_time_ms": workflow_result.execution_time_ms,
+                },
             )
 
-            await self._publisher.publish(
-                Event(
-                    event_type=EventType.GATEWAY_COMPLETED,
-                    metadata=EventMetadata(
-                        workflow_id=workflow.id,
-                        execution_id=workflow_result.execution_id,
-                        correlation_id = request.correlation_id or request.request_id,
-                        source="EnterpriseGateway",
-                    ),
-                    payload={
-                        "success": workflow_result.success,
-                        "selected_agent": plan.selected_agent,
-                        "capability": plan.capability,
-                        "execution_time_ms": workflow_result.execution_time_ms,
-                    }
-                )
+            await self._publish_completed(
+                request,
+                workflow_result,
             )
-            return GatewayResponse(
-                success=workflow_result.success,
-                message=(
-                    "Execution completed successfully."
-                    if workflow_result.success
-                    else workflow_result.error or "Execution failed."
-                ),
-                result=workflow_result.result,
-                metadata=metadata,
+
+            return GatewayResponse.from_workflow(
+                workflow_result,
+                metadata,
             )
 
         except Exception as exc:
 
-            logger.exception(
-                "Gateway execution failed."
+            logger.exception("Gateway execution failed.")
+
+            await self._publish_failed(
+                request,
+                exc,
             )
-            await self._publisher.publish(
-                Event(
-                    event_type=EventType.GATEWAY_FAILED,
-                    metadata=EventMetadata(
-                        correlation_id = request.correlation_id or request.request_id,
-                        source="EnterpriseGateway",
-                    ),
-                    payload={
-                        "success": False,
-                        "capability": request.capability,
-                        "error": str(exc),
-                    },
-                )
-            )
+
             raise GatewayExecutionError(
-                f"Workflow execution failed: {exc}",
+                message="Workflow execution failed.",
+                cause=exc,
             ) from exc
         
     # ==========================================================
@@ -230,7 +167,6 @@ class EnterpriseGateway:
 
     async def _authorize(
         self,
-        request: GatewayRequest,
         metadata: GatewayExecutionMetadata,
     ) -> None:
         """
@@ -280,17 +216,16 @@ class EnterpriseGateway:
         """
         Return registered agent names.
         """
-
-        return self._router.registered_agents()
-
+        return self._registry.agent_names()
+    
     def supported_capabilities(
         self,
     ) -> dict[str, list[str]]:
         """
         Return capabilities grouped by agent.
         """
-
-        return self._router.supported_capabilities()
+        
+        return self._registry.supported_capabilities()
 
     # ==========================================================
     # Health
@@ -308,45 +243,79 @@ class EnterpriseGateway:
             "registered_agents": self.supported_agents(),
             "capabilities": self.supported_capabilities(),
         }
-
-    # ==========================================================
-    # Future Extension Hooks
-    # ==========================================================
-
-    async def execute_workflow(
+    
+    async def _publish_started(
         self,
         request: GatewayRequest,
-    ) -> GatewayResponse:
+    ) -> None:  
         """
-        Workflow execution hook.
-
-        Future integration:
-            - Workflow Runtime
-            - Agentic Runtime
-            - Multi-Agent Runtime
+        Publish gateway started event.
         """
 
-        logger.info(
-            "Workflow execution requested."
+        await self._publisher.publish(
+            Event(
+                event_type=EventType.GATEWAY_STARTED,
+                metadata=EventMetadata(
+                    correlation_id = request.correlation_id or request.request_id,
+                    source="EnterpriseGateway",
+                ),
+                payload={
+                    "capability": request.capability,
+                    "execution_mode": request.execution_mode.value,
+                    "user_id": request.user_id,
+                }
+            )
         )
-
-        return await self.execute(request)
-
-    async def execute_multi_agent(
+        
+    async def _publish_completed(
         self,
-        requests: list[GatewayRequest],
-    ) -> list[GatewayResponse]:
+        request: GatewayRequest,
+        workflow_result,
+    ) -> None:
         """
-        Multi-agent execution hook.
-
-        Future integration:
-            - Multi-Agent Coordinator
-            - Task Dispatcher
-            - Result Aggregator
+        Publish gateway completed event.
         """
 
-        logger.info(
-            "Multi-agent execution requested."
+        await self._publisher.publish(
+            Event(
+                event_type=EventType.GATEWAY_COMPLETED,
+                metadata=EventMetadata(
+                    workflow_id=workflow_result.workflow_id,
+                    execution_id=workflow_result.execution_id,
+                    correlation_id=request.correlation_id or request.request_id,
+                    capability=workflow_result.requested_capability,
+                    agent=workflow_result.selected_agent,
+                    source="EnterpriseGateway",
+                ),
+                payload={
+                    "success": workflow_result.success,
+                    "selected_agent": workflow_result.selected_agent,
+                    "capability": workflow_result.requested_capability,
+                    "execution_time_ms": workflow_result.execution_time_ms,
+                },
+            )
         )
+        
+    async def _publish_failed(
+        self,
+        request: GatewayRequest,
+        exc: Exception,
+    ) -> None:  
+        """
+        Publish gateway failed event.
+        """
 
-        return await self.execute_many(requests)
+        await self._publisher.publish(
+            Event(
+                event_type=EventType.GATEWAY_FAILED,
+                metadata=EventMetadata(
+                    correlation_id = request.correlation_id or request.request_id,
+                    source="EnterpriseGateway",
+                ),
+                payload={
+                    "success": False,
+                    "capability": request.capability,
+                    "error": str(exc),
+                },
+            )
+        )

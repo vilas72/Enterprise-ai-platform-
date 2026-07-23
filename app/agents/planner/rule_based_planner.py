@@ -20,100 +20,102 @@ logger = logging.getLogger(__name__)
 
 class RuleBasedPlanner(Planner):
     """
-    Rule-based planner.
+    Enterprise rule-based planner.
 
-    Uses capability mappings to determine the execution plan.
+    Maps business capabilities to the appropriate workflow and agent.
     """
 
-    _DEVELOPER = {
-        "search_repository",
-        "analyze_repository",
-        "repository_health",
-        "code_quality",
-        "review_pull_request",
-        "merge_pull_request",
-        "create_github_issue",
-        "create_jira_bug",
-        "create_jira_story",
-        "transition_jira_issue",
-        "generate_unit_tests",
-        "generate_documentation",
-        "architecture_recommendations",
-        "explain_code",
-    }
+    _CAPABILITY_MAP = {
 
-    _KNOWLEDGE = {
-        "search",
-        "answer",
-        "summarize",
-        "recommend",
-        "rewrite",
-        "explain",
-    }
+        #
+        # Developer Workflow
+        #
+        "review_pull_request": ("developer", "review_pull_request"),
+        "merge_pull_request": ("developer", "review_pull_request"),
+        "search_repository": ("developer", "review_pull_request"),
+        "analyze_repository": ("developer", "review_pull_request"),
+        "repository_health": ("developer", "review_pull_request"),
+        "create_github_issue": ("developer", "review_pull_request"),
+        "create_jira_bug": ("developer", "review_pull_request"),
+        "create_jira_story": ("developer", "review_pull_request"),
+        "transition_jira_issue": ("developer", "review_pull_request"),
+        "generate_unit_tests": ("developer", "review_pull_request"),
+        "generate_documentation": ("developer", "review_pull_request"),
+        "architecture_recommendations": ("developer", "review_pull_request"),
+        "explain_code": ("developer", "review_pull_request"),
 
-    _SUPPORT = {
-        "search_tickets",
-        "create_ticket",
-        "update_ticket",
-        "transition_ticket",
-        "search_knowledge",
-        "recommend_articles",
-        "similar_incidents",
-        "summarize_incident",
-        "generate_resolution",
-        "escalation_recommendation",
-    }
+        #
+        # Knowledge Workflow
+        #
+        "search": ("knowledge", "search_repository"),
+        "answer": ("knowledge", "search_repository"),
+        "summarize": ("knowledge", "search_repository"),
+        "recommend": ("knowledge", "search_repository"),
+        "rewrite": ("knowledge", "search_repository"),
+        "explain": ("knowledge", "search_repository"),
 
-    _DEVOPS = {
-        "repository_analysis",
-        "repository_health",
-        "release_readiness",
-        "deployment_analysis",
-        "incident_analysis",
-        "pull_request_review",
-        "code_quality",
+        #
+        # Support Workflow
+        #
+        "create_ticket": ("support", "create_ticket"),
+        "search_tickets": ("support", "search_tickets"),
+        "update_ticket": ("support", "update_ticket"),
+        "transition_ticket": ("support", "transition_ticket"),
+        "resolve_ticket": ("support", "resolve_ticket"),
+        "search_knowledge": ("support", "search_knowledge"),
+        "recommend_articles": ("support", "recommend_articles"),
+        "similar_incidents": ("support", "similar_incidents"),
+        "summarize_incident": ("support", "summarize_incident"),
+        "generate_resolution": ("support", "generate_resolution"),
+        "escalation_recommendation": ("support", "escalation_recommendation"),
+
+        #
+        # DevOps Workflow
+        #
+        "deploy_application": ("devops", "deploy_application"),
+        "repository_analysis": ("devops", "deploy_application"),
+        "release_readiness": ("devops", "deploy_application"),
+        "deployment_analysis": ("devops", "deploy_application"),
+        "incident_analysis": ("devops", "deploy_application"),
+        "pull_request_review": ("devops", "deploy_application"),
+        "code_quality": ("devops", "deploy_application"),
     }
 
     async def plan(
         self,
         request: Any,
     ) -> PlannerResult:
+        """
+        Build a deterministic execution plan.
+        """
 
-        capability = request.capability
+        requested_capability = request.capability
 
         logger.info(
             "Planning capability '%s'.",
-            capability,
+            requested_capability,
         )
 
-        if capability in self._DEVELOPER:
-            agent = "developer"
-
-        elif capability in self._KNOWLEDGE:
-            agent = "knowledge"
-
-        elif capability in self._SUPPORT:
-            agent = "support"
-
-        elif capability in self._DEVOPS:
-            agent = "devops"
-
-        else:
+        try:
+            agent, workflow_capability = self._CAPABILITY_MAP[
+                requested_capability
+            ]
+        except KeyError as exc:
             raise ValueError(
-                f"Unsupported capability: {capability}"
-            )
+                f"Unsupported capability: {requested_capability}"
+            ) from exc
 
         return PlannerResult(
             planner="rule_based",
             selected_agent=agent,
-            capability=capability,
-            confidence=1.0,
-            reasoning=f"Capability '{capability}' mapped to '{agent}'.",
+            requested_capability=requested_capability,
+            workflow_capability=workflow_capability,
+            payload=request.payload,
             workflow=[
                 PlannerStep(
                     order=1,
                     agent=agent,
-                    capability=capability,
+                    capability=workflow_capability,
                     payload=request.payload,
                 )
             ],

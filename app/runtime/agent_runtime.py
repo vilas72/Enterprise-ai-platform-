@@ -4,12 +4,10 @@ Enterprise Agent Runtime.
 
 from __future__ import annotations
 
-from asyncio.log import logger
 import uuid
-import traceback
+
 from datetime import UTC, datetime
 
-from app.events.models.event_metadata import EventMetadata
 from app.runtime.models.runtime_context import RuntimeContext
 from app.gateway.models import GatewayRequest
 from app.runtime.models.runtime_execution import RuntimeExecution
@@ -23,6 +21,9 @@ from app.events.models.event import Event
 from app.events.models.event_metadata import EventMetadata
 from app.events.models.event_type import EventType
 from app.events.models.event_source import EventSource
+import logging
+
+logger = logging.getLogger(__name__)
 
 class AgentRuntime:
     """
@@ -62,7 +63,7 @@ class AgentRuntime:
             execution_id=execution_id,
             workflow_id=workflow_id,
             agent=agent,
-            capability=request.capability,
+            capability=capability,
             request=request,
         )
 
@@ -125,13 +126,14 @@ class AgentRuntime:
                     },
                 )
             )
+            
+           
             return result
 
         except Exception as exc:
 
             logger.exception("Unhandled exception")
-            print(traceback.format_exc())
-     
+            
             completed = datetime.now(
                 UTC,
             )
@@ -142,7 +144,27 @@ class AgentRuntime:
 
             execution.completed_at = completed
             execution.error = str(exc)
-            
+            execution_time_ms = (
+                completed - started
+            ).total_seconds() * 1000
+
+            await self._publisher.publish(
+                Event(
+                    event_type=EventType.RUNTIME_FAILED,
+                    metadata=EventMetadata(
+                        workflow_id=workflow_id,
+                        execution_id=execution_id,
+                        agent=agent,
+                        capability=capability,
+                        source=EventSource.AGENT_RUNTIME,
+                    ),
+                    payload={
+                        "success": False,
+                        "error": str(exc),
+                    },
+                )
+            )
+
           
             return RuntimeResult(
                 success=False,

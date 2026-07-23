@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class PlannerStep(BaseModel):
     """
-    Single execution step.
+    Single workflow execution step.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -29,7 +29,13 @@ class PlannerStep(BaseModel):
 
 class PlannerResult(BaseModel):
     """
-    Planner execution result.
+    Output produced by a planner.
+
+    requested_capability:
+        Original capability requested by the client.
+
+    workflow_capability:
+        Workflow template selected by the planner.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -38,22 +44,14 @@ class PlannerResult(BaseModel):
 
     selected_agent: str
 
-    capability: str
+    requested_capability: str
 
-    confidence: float = Field(
-        default=1.0,
-        ge=0,
-        le=1,
+    workflow_capability: str
+
+    payload: dict[str, Any] = Field(
+        default_factory=dict,
     )
-
-    reasoning: str | None = None
 
     workflow: list[PlannerStep] = Field(
         default_factory=list,
-    )
-
-    requires_reflection: bool = False
-
-    metadata: dict[str, Any] = Field(
-        default_factory=dict,
     )

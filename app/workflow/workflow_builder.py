@@ -4,67 +4,94 @@ Workflow Builder.
 
 from __future__ import annotations
 
+from copy import deepcopy
+from uuid import uuid4
+
 from app.agents.planner.planner_result import PlannerResult
-from app.workflow.models.workflow_definition import (
-    WorkflowDefinition,
-    WorkflowType,
-)
-from app.workflow.models.workflow_step import (
-    WorkflowStep,
-    WorkflowStepType,
+from app.workflow.models.workflow_definition import WorkflowDefinition
+from app.workflow.models.workflow_step import WorkflowStep
+from app.workflow.templates.workflow_template_registry import (
+    WorkflowTemplateRegistry,
 )
 
 
 class WorkflowBuilder:
     """
-    Builds executable workflows from planner results.
+    Builds executable workflow definitions from reusable
+    workflow templates.
     """
+
+    def __init__(
+        self,
+        registry: WorkflowTemplateRegistry,
+    ) -> None:
+        self._registry = registry
 
     def build(
         self,
         planner_result: PlannerResult,
     ) -> WorkflowDefinition:
         """
-        Build a workflow definition from the planner result.
+        Build an executable workflow.
         """
 
-        steps = []
+        workflow_capability = planner_result.workflow_capability
 
-        for index, planner_step in enumerate(
-            planner_result.workflow,
-            start=1,
-        ):
-            step = WorkflowStep(
-                id=f"step-{planner_step.order}",
-                name=planner_step.capability.replace("_", " ").title(),
-                description=f"Execute '{planner_step.capability}' using '{planner_step.agent}'",
-                type=WorkflowStepType.TASK,
-                agent=planner_step.agent,
-                capability=planner_step.capability,
-                inputs=planner_step.payload,
-                metadata={},
-            )
+        if not self._registry.exists(workflow_capability):
+                raise ValueError(
+                    f"No workflow template registered for "
+                    f"workflow capability '{workflow_capability}'."
+                )
 
-            steps.append(step)
-
-        workflow_type = (
-            WorkflowType.SINGLE_AGENT
-            if len(steps) == 1
-            else WorkflowType.MULTI_AGENT
+        template = self._registry.get(
+            workflow_capability
         )
 
-        return WorkflowDefinition(
-            id=planner_result.capability,
-            name=planner_result.capability.replace(
-                "_",
-                " ",
-            ).title(),
-            description=planner_result.reasoning,
-            type=workflow_type,
-            steps=steps,
+        workflow = WorkflowDefinition(
+            id=str(uuid4()),
+            name=template.name,
+            description=template.description,
+            version=template.version,
+            steps=self._build_steps(
+                template.steps,
+                planner_result,
+            ),
             metadata={
+                **template.metadata,
+                "requested_capability": planner_result.requested_capability,
+                "workflow_capability": planner_result.workflow_capability,
                 "planner": planner_result.planner,
-                "confidence": planner_result.confidence,
                 "selected_agent": planner_result.selected_agent,
+                "confidence": planner_result.payload.get("confidence"),
             },
         )
+
+        return workflow
+
+    def _build_steps(
+        self,
+        template_steps: list[WorkflowStep],
+        planner_result: PlannerResult,
+    ) -> list[WorkflowStep]:
+        """
+        Clone workflow template steps.
+        """
+
+        workflow_steps: list[WorkflowStep] = []
+
+        for step in template_steps:
+
+            cloned_step = deepcopy(step)
+            
+            if planner_result.payload:
+                cloned_step.inputs = {
+                    **(cloned_step.inputs or {}),
+                    **(planner_result.payload or {}),
+                }
+
+
+            workflow_steps.append(
+                cloned_step,
+            )
+
+        return workflow_steps

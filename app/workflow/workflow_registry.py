@@ -6,6 +6,10 @@ from __future__ import annotations
 
 from app.workflow.models.workflow_definition import WorkflowDefinition
 
+from app.workflow.exceptions import (
+    WorkflowNotFoundException,
+    WorkflowValidationException,
+)
 
 class WorkflowRegistry:
     """
@@ -23,6 +27,11 @@ class WorkflowRegistry:
         Register a workflow.
         """
 
+        if workflow.id in self._workflows:
+            raise WorkflowValidationException(
+                f"Workflow '{workflow.id}' is already registered."
+            )
+        
         self._workflows[workflow.id] = workflow
 
     def get(
@@ -33,8 +42,15 @@ class WorkflowRegistry:
         Retrieve a workflow.
         """
 
-        return self._workflows[workflow_id]
+        workflow = self._workflows.get(workflow_id)
 
+        if workflow is None:
+            raise WorkflowNotFoundException(
+                f"Workflow '{workflow_id}' was not found."
+            )
+
+        return workflow
+    
     def exists(
         self,
         workflow_id: str,
@@ -60,4 +76,10 @@ class WorkflowRegistry:
         Remove a workflow.
         """
 
-        self._workflows.pop(workflow_id, None)
+        if workflow_id not in self._workflows:
+            raise WorkflowNotFoundException(
+                f"Workflow '{workflow_id}' was not found."
+                
+            )
+
+        del self._workflows[workflow_id]

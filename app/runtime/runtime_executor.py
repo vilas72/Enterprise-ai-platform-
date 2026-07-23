@@ -4,10 +4,12 @@ Runtime Executor.
 from __future__ import annotations
 
 
-from app.gateway.router import GatewayRouter
+
 from app.runtime.models.runtime_context import RuntimeContext
 from app.runtime.models.runtime_result import RuntimeResult
+from app.gateway.registry import GatewayRegistry
 
+from app.runtime.agent_request_factory import AgentRequestFactory
 
 class RuntimeExecutor:
     """
@@ -16,10 +18,11 @@ class RuntimeExecutor:
 
     def __init__(
         self,
-        router: GatewayRouter,
+        registry: GatewayRegistry,
     ) -> None:
 
-        self._router = router
+        self._registry = registry
+        self._request_factory = AgentRequestFactory()
 
     async def execute(
         self,
@@ -28,22 +31,31 @@ class RuntimeExecutor:
         """
         Execute a runtime request.
         """
+        
+        agent = self._registry.get(context.agent)
 
-        agent = self._router.get_agent(
-            context.agent,
-        )
+        if agent is None:
+            raise ValueError(
+                f"Agent '{context.agent}' is not registered."
+            )
 
-        agent_request = self._router.build_agent_request(
-            agent=agent,
+        agent_request = self._request_factory.create(
+            agent_name=context.agent,
             capability=context.capability,
             request=context.request,
         )
 
-        response = await agent.execute(
-            agent_request,
-        )
-      
-        context.response = response
+                
+        try:
+            response = await agent.execute(
+                agent_request,
+            )
+
+            context.response = response
+        except Exception as exc:
+            raise RuntimeError(
+                f"Runtime execution failed: {exc}"
+            ) from exc
 
         return RuntimeResult(
             success=response.success,
@@ -51,5 +63,9 @@ class RuntimeExecutor:
             agent=context.agent,
             capability=context.capability,
             result=response.result,
-            metadata=response.metadata.model_dump(),
+            metadata=(
+                response.metadata.model_dump()
+                if response.metadata
+                else {}
+            ),
         )

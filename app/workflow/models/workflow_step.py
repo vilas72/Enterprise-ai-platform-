@@ -5,9 +5,11 @@ Workflow Step Models.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, Callable
 
 from pydantic import BaseModel, Field
+
+from app.workflow.models.action_type import ActionType
 
 
 class WorkflowStepType(str, Enum):
@@ -113,4 +115,8 @@ class WorkflowStep(BaseModel):
 
     metadata: dict[str, Any] = Field(
         default_factory=dict,
+    )
+   
+    action: ActionType = Field(
+        description="Action type for the workflow step.",
     )

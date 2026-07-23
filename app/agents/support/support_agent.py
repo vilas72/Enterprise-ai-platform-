@@ -74,6 +74,7 @@ class SupportAgent:
 
             SupportCapability.ESCALATION_RECOMMENDATION:
                 self._support.escalation_recommendation,
+                
         }
 
     async def execute(
@@ -103,7 +104,14 @@ class SupportAgent:
 
                 raise ValueError(
                     f"Unsupported capability: "
-                    f"{request.capability.value}"
+                    f"{request.capability}"
+                )
+
+            handler = self._handlers.get(request.capability)
+
+            if handler is None:
+                raise ValueError(
+                    f"Unsupported capability: {request.capability}"
                 )
 
             result = await handler(request)

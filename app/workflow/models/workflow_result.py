@@ -27,6 +27,62 @@ class WorkflowResult(BaseModel):
         description="Workflow execution identifier.",
     )
 
+    #
+    # Planner / Execution Information
+    #
+
+    #
+    # Planner / Execution Information
+    #
+
+    requested_capability: str | None = Field(
+        default=None,
+        description="Business capability requested by the caller.",
+    )
+
+    workflow_capability: str | None = Field(
+        default=None,
+        description="Workflow capability selected by the planner.",
+    )
+
+    selected_agent: str | None = Field(
+        default=None,
+        description="Selected business agent.",
+    )
+
+    planner: str | None = Field(
+        default=None,
+        description="Planner used to build the workflow.",
+    )
+
+    confidence: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Planner confidence score.",
+    )
+
+    selected_agent: str | None = Field(
+        default=None,
+        description="Selected business agent.",
+    )
+
+    planner: str | None = Field(
+        default=None,
+        description="Planner used to build the workflow.",
+    )
+
+    confidence: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Planner confidence score.",
+    )
+
+    #
+    # Result
+    #
+
     result: Any = Field(
         default=None,
         description="Final workflow result.",
@@ -39,13 +95,17 @@ class WorkflowResult(BaseModel):
 
     metadata: dict[str, Any] = Field(
         default_factory=dict,
-        description="Workflow execution metadata.",
+        description="Additional workflow metadata.",
     )
 
     error: str | None = Field(
         default=None,
         description="Workflow failure reason.",
     )
+
+    #
+    # Timing
+    #
 
     started_at: datetime | None = Field(
         default=None,
@@ -61,4 +121,9 @@ class WorkflowResult(BaseModel):
         default=0.0,
         ge=0,
         description="Workflow execution time in milliseconds.",
+    )
+    
+    workflow_version: str | None = Field(
+        default=None,
+        description="Workflow definition version.",
     )

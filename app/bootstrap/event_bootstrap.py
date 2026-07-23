@@ -1,37 +1,58 @@
-from app.events.dependencies import get_event_registry
-from app.events.models.event_type import EventType
+"""
+Event Bootstrap.
 
-from app.reflection.dependencies import get_reflection_engine
-from app.reflection.reflection_subscriber import ReflectionSubscriber
+Creates and wires the Enterprise Event infrastructure.
+
+Dependency Graph
+
+EventDispatcher
+        │
+        ▼
+    EventBus
+        │
+        ▼
+ EventPublisher
+"""
+
+from __future__ import annotations
+
+from app.events.event_dispatcher import EventDispatcher
+from app.events.event_bus import EventBus
+from app.events.event_publisher import EventPublisher
+from app.events.event_registry import EventRegistry
 
 
-def initialize_events() -> None:
+#
+# Dispatcher
+#
+
+event_registry = EventRegistry()
+
+event_dispatcher = EventDispatcher(
+    registry=event_registry
+)
+
+
+#
+# Event Bus
+#
+
+event_bus = EventBus(
+    dispatcher=event_dispatcher,
+)
+
+
+#
+# Event Publisher
+#
+
+event_publisher = EventPublisher(
+    event_bus=event_bus,
+)
+
+async def initialize_events():
     """
-    Register event subscribers.
+    Initialize the event system.
     """
 
-    registry = get_event_registry()
-
-    reflection = ReflectionSubscriber(
-        get_reflection_engine(),
-    )
-
-    registry.register(
-        EventType.RUNTIME_COMPLETED,
-        reflection,
-    )
-
-    registry.register(
-        EventType.RUNTIME_FAILED,
-        reflection,
-    )
-
-    registry.register(
-        EventType.STEP_FAILED,
-        reflection,
-    )
-
-    registry.register(
-        EventType.WORKFLOW_COMPLETED,
-        reflection,
-    )
+    await event_dispatcher.initialize() 
