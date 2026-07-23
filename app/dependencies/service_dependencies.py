@@ -1,4 +1,6 @@
 from app.bootstrap.provider_bootstrap import register_providers
+from functools import lru_cache
+
 from app.providers.provider_factory import ProviderFactory
 from app.rag import query_rewriter
 from app.search import hybrid_search
@@ -93,6 +95,8 @@ _ingestion_service = IngestionService(
     vector_service=_vector_service,
     keyword_search=_keyword_search,
 )
+
+
 
 def get_ai_service() -> AIService:
     """

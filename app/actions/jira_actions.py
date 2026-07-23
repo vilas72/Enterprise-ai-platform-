@@ -2,7 +2,7 @@
 Jira business actions for the Developer Agent.
 
 This module encapsulates Jira-related business capabilities exposed by
-the Developer Agent. It translates business requests into Jira
+        request: SupportAgentRequest,
 operations using the Enterprise JiraConnector.
 
 No REST API logic should exist in this layer.
@@ -12,19 +12,20 @@ from __future__ import annotations
 
 import logging
 
-from app.agents.developer.models import (
-    DeveloperAgentRequest,
-    JiraIssueReference,
-)
+from app.actions.ticket_search_request import TicketSearchRequest
+from app.agents.developer.models import JiraIssueReference
+from app.agents.support.models import SupportAgentRequest
 from app.connectors.jira.jira_connector import JiraConnector
 from app.connectors.jira.models import (
     JiraIssue,
     JiraIssueType,
+    JiraPriority,
 )
 
 logger = logging.getLogger(__name__)
 
 
+        
 class JiraActions:
     """
     Enterprise Jira business actions.
@@ -51,7 +52,7 @@ class JiraActions:
 
     @staticmethod
     def _require_project_key(
-        request: DeveloperAgentRequest,
+        request: SupportAgentRequest,
     ) -> str:
         """
         Validate project key.
@@ -66,7 +67,7 @@ class JiraActions:
     
     @staticmethod
     def _require_issue(
-        request: DeveloperAgentRequest,
+        request: SupportAgentRequest,
     ) -> JiraIssueReference:
         """
         Validate Jira issue.
@@ -81,7 +82,7 @@ class JiraActions:
 
     @staticmethod
     def _require_transition(
-        request: DeveloperAgentRequest,
+        request: SupportAgentRequest,
     ) -> str:
         """
         Validate transition id.
@@ -104,7 +105,7 @@ class JiraActions:
 
     async def create_bug(
         self,
-        request: DeveloperAgentRequest,
+        request: SupportAgentRequest,
     ) -> JiraIssue:
         """
         Create a Jira Bug.
@@ -133,7 +134,7 @@ class JiraActions:
 
     async def create_story(
         self,
-        request: DeveloperAgentRequest,
+        request: SupportAgentRequest,
     ) -> JiraIssue:
         """
         Create a Jira Story.
@@ -161,7 +162,7 @@ class JiraActions:
 
     async def transition_issue(
         self,
-        request: DeveloperAgentRequest,
+        request: SupportAgentRequest,
     ) -> JiraIssue:
         """
         Transition an existing Jira issue.
@@ -191,7 +192,7 @@ class JiraActions:
     async def execute(
         self,
         capability: str,
-        request: DeveloperAgentRequest,
+        request: SupportAgentRequest,
     ) -> JiraIssue:
         """
         Execute a Jira capability.
@@ -205,6 +206,7 @@ class JiraActions:
             "create_jira_bug": self.create_bug,
             "create_jira_story": self.create_story,
             "transition_jira_issue": self.transition_issue,
+            "update_jira_issue": self.update_issue,
         }
 
         handler = handlers.get(capability)
@@ -218,7 +220,7 @@ class JiraActions:
     
     async def search_issues(
         self,
-        query: str,
+        request: TicketSearchRequest,
     ):
         """
         Search Jira issues using JQL.
@@ -226,9 +228,61 @@ class JiraActions:
 
         logger.info(
             "Searching Jira issues: %s",
-            query,
+            request.query,
+        )
+        # Already a JQL query?
+        if any(
+            token in request.query.upper()
+            for token in (
+                "=",
+                "~",
+                " IN ",
+                " NOT IN ",
+                "ORDER BY",
+                "PROJECT",
+                "STATUS",
+                "ASSIGNEE",
+                "REPORTER",
+                "TEXT",
+                "SUMMARY",
+            )
+        ):
+            jql = request.query
+        else:
+            jql = f'text ~ "{request.query}"'
+
+        logger.info(
+            "Generated JQL: %s",
+            jql,
         )
 
         return await self._jira.search_issues(
-            jql=query,
+            jql=jql,
+        )
+      
+        
+    async def update_issue(
+        self,
+        *,
+        issue_key: str,
+        summary: str | None = None,
+        description: str | None = None,
+        priority: JiraPriority | None = None,
+        labels: list[str] | None = None,
+    ) -> JiraIssue:
+        """
+        Update an existing Jira issue.
+        """
+
+        logger.info(
+            "Updating Jira issue %s",
+            issue_key,
+        )
+
+        return await self._jira.update_issue(
+            issue_key=issue_key,
+            summary=summary,
+            description=description,
+            priority=priority,
+            labels=labels,
         )

@@ -117,3 +117,5 @@ class AgentRequest:
     #
 
     metadata: dict[str, Any] = field(default_factory=dict)
+    
+    capability: str | None = None

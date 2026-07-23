@@ -1,5 +1,7 @@
 from app.bootstrap.provider_bootstrap import register_providers
+from app.bootstrap.event_bootstrap import initialize_events
 from app.core.config import settings
+
 
 from fastapi import FastAPI
 
@@ -91,6 +93,7 @@ def main():
     logger.info("Starting Enterprise AI Platform...")
 
     register_providers()
+    initialize_events()
 
     logger.info("Provider registration completed.")
     logger.info(f"Default Provider : {settings.default_provider}")

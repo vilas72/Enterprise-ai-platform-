@@ -1,84 +1,122 @@
 """
-Default rule-based planner implementation.
+Enterprise Rule-Based Planner.
+
+Provides deterministic planning without requiring an LLM.
 """
 
 from __future__ import annotations
 
-from app.agents.models.agent_context import AgentContext
-from app.agents.models.agent_plan import AgentPlan
-from app.agents.models.agent_request import AgentRequest
-from app.agents.models.agent_step import AgentStep
+import logging
+from typing import Any
+
 from app.agents.planner.planner import Planner
-from app.agents.planner.planner_result import PlannerResult
+from app.agents.planner.planner_result import (
+    PlannerResult,
+    PlannerStep,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class RuleBasedPlanner(Planner):
     """
-    Default deterministic planner.
+    Enterprise rule-based planner.
 
-    Produces a simple execution plan without requiring an LLM.
-    This implementation serves as the baseline planner and can
-    later be replaced by LLMPlanner or LangGraphPlanner.
+    Maps business capabilities to the appropriate workflow and agent.
     """
 
-    def create_plan(
+    _CAPABILITY_MAP = {
+
+        #
+        # Developer Workflow
+        #
+        "review_pull_request": ("developer", "review_pull_request"),
+        "merge_pull_request": ("developer", "review_pull_request"),
+        "search_repository": ("developer", "review_pull_request"),
+        "analyze_repository": ("developer", "review_pull_request"),
+        "repository_health": ("developer", "review_pull_request"),
+        "create_github_issue": ("developer", "review_pull_request"),
+        "create_jira_bug": ("developer", "review_pull_request"),
+        "create_jira_story": ("developer", "review_pull_request"),
+        "transition_jira_issue": ("developer", "review_pull_request"),
+        "generate_unit_tests": ("developer", "review_pull_request"),
+        "generate_documentation": ("developer", "review_pull_request"),
+        "architecture_recommendations": ("developer", "review_pull_request"),
+        "explain_code": ("developer", "review_pull_request"),
+
+        #
+        # Knowledge Workflow
+        #
+        "search": ("knowledge", "search_repository"),
+        "answer": ("knowledge", "search_repository"),
+        "summarize": ("knowledge", "search_repository"),
+        "recommend": ("knowledge", "search_repository"),
+        "rewrite": ("knowledge", "search_repository"),
+        "explain": ("knowledge", "search_repository"),
+
+        #
+        # Support Workflow
+        #
+        "create_ticket": ("support", "create_ticket"),
+        "search_tickets": ("support", "search_tickets"),
+        "update_ticket": ("support", "update_ticket"),
+        "transition_ticket": ("support", "transition_ticket"),
+        "resolve_ticket": ("support", "resolve_ticket"),
+        "search_knowledge": ("support", "search_knowledge"),
+        "recommend_articles": ("support", "recommend_articles"),
+        "similar_incidents": ("support", "similar_incidents"),
+        "summarize_incident": ("support", "summarize_incident"),
+        "generate_resolution": ("support", "generate_resolution"),
+        "escalation_recommendation": ("support", "escalation_recommendation"),
+
+        #
+        # DevOps Workflow
+        #
+        "deploy_application": ("devops", "deploy_application"),
+        "repository_analysis": ("devops", "deploy_application"),
+        "release_readiness": ("devops", "deploy_application"),
+        "deployment_analysis": ("devops", "deploy_application"),
+        "incident_analysis": ("devops", "deploy_application"),
+        "pull_request_review": ("devops", "deploy_application"),
+        "code_quality": ("devops", "deploy_application"),
+    }
+
+    async def plan(
         self,
-        request: AgentRequest,
-        context: AgentContext,
+        request: Any,
     ) -> PlannerResult:
+        """
+        Build a deterministic execution plan.
+        """
 
-        steps: list[AgentStep] = []
+        requested_capability = request.capability
 
-        steps.append(
-            AgentStep(
-                id=1,
-                name="Understand Request",
-                description="Analyse the user request.",
-                action="reason",
-            )
+        logger.info(
+            "Planning capability '%s'.",
+            requested_capability,
         )
 
-        if request.enable_rag:
-
-            steps.append(
-                AgentStep(
-                    id=2,
-                    name="Retrieve Knowledge",
-                    description="Retrieve enterprise knowledge.",
-                    action="retrieve",
-                )
-            )
-
-        if request.enable_tools:
-
-            steps.append(
-                AgentStep(
-                    id=len(steps) + 1,
-                    name="Execute Tools",
-                    description="Execute required tools.",
-                    action="tools",
-                )
-            )
-
-        steps.append(
-            AgentStep(
-                id=len(steps) + 1,
-                name="Generate Response",
-                description="Generate the final response.",
-                action="generate",
-            )
-        )
-
-        plan = AgentPlan(
-            goal=request.task,
-            steps=steps,
-            reasoning="Rule-based execution plan.",
-            confidence=1.0,
-        )
+        try:
+            agent, workflow_capability = self._CAPABILITY_MAP[
+                requested_capability
+            ]
+        except KeyError as exc:
+            raise ValueError(
+                f"Unsupported capability: {requested_capability}"
+            ) from exc
 
         return PlannerResult(
-            success=True,
-            plan=plan,
-            reasoning="Deterministic planner executed successfully.",
-            confidence=1.0,
+            planner="rule_based",
+            selected_agent=agent,
+            requested_capability=requested_capability,
+            workflow_capability=workflow_capability,
+            payload=request.payload,
+            workflow=[
+                PlannerStep(
+                    order=1,
+                    agent=agent,
+                    capability=workflow_capability,
+                    payload=request.payload,
+                )
+            ],
         )

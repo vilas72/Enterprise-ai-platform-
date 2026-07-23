@@ -14,9 +14,15 @@ The gateway intentionally contains no business logic.
 """
 
 from __future__ import annotations
+from datetime import datetime
+
+from app.gateway.registry import GatewayRegistry
+from app.gateway.router import GatewayRouter
+from app.workflow.workflow_service import WorkflowService
+from app.events.event_publisher import EventPublisher
 
 import logging
-from datetime import datetime
+
 from typing import Any
 
 from app.gateway.exceptions import (
@@ -24,10 +30,15 @@ from app.gateway.exceptions import (
 )
 from app.gateway.models import (
     GatewayExecutionMetadata,
+    GatewayExecutionMode,
     GatewayRequest,
     GatewayResponse,
 )
-from app.gateway.router import GatewayRouter
+
+from app.events.models.event import Event
+from app.events.models.event_metadata import EventMetadata
+from app.events.models.event_type import EventType
+
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +52,14 @@ class EnterpriseGateway:
 
     def __init__(
         self,
-        router: GatewayRouter,
+        workflow_service: WorkflowService,        
+        publisher: EventPublisher,
+        registry: GatewayRegistry,
     ) -> None:
 
-        self._router = router
+        self._workflow_service = workflow_service
+        self._publisher = publisher
+        self._registry = registry
 
     # ==========================================================
     # Public API
@@ -58,120 +73,76 @@ class EnterpriseGateway:
         Execute an enterprise request.
         """
 
-        logger.info(
-            "Gateway received capability '%s'.",
-            request.capability,
-        )
+        await self._publish_started(request)
 
         metadata = GatewayExecutionMetadata(
             execution_mode=request.execution_mode,
+            governance_approved=False,
         )
 
-        started = datetime.utcnow()
-
         try:
-
             #
             # Validation
             #
-
             self._validate_request(request)
 
             #
             # Governance
             #
-
-            await self._authorize(
-                request,
-                metadata,
-            )
+            await self._authorize(metadata)
 
             #
-            # Route
+            # Execute Workflow
             #
-
-            agent = await self._router.route(
-                request,
-            )
-
-            metadata.selected_agent = (
-                agent.__class__.__name__
-            )
-
-            #
-            # Execute
-            #
-            
-            agent_request = self._router.build_agent_request(
-                agent=agent,
+            workflow_result = await self._workflow_service.execute(
                 request=request,
             )
-            
-            logger.info(
-                "Agent request type: %s",
-                type(agent_request),
+
+            metadata = GatewayExecutionMetadata.from_workflow(
+                workflow_result=workflow_result,
+                execution_mode=GatewayExecutionMode.WORKFLOW,
+                selected_agent=getattr(
+                    workflow_result,
+                    "selected_agent",
+                    None,
+                ),
             )
-
-            result = await self._execute_agent(
-                agent=agent,
-                request=agent_request,
-            )
-            #
-            # Metrics
-            #
-
-            completed = datetime.utcnow()
-
-            metadata.execution_completed_at = (
-                completed
-            )
-
-            metadata.execution_time_ms = (
-                completed - started
-            ).total_seconds() * 1000
 
             logger.info(
-                "Gateway execution completed."
+                "Gateway execution completed.",
+                extra={
+                    "workflow_id": workflow_result.workflow_id,
+                    "execution_id": workflow_result.execution_id,
+                    "capability": workflow_result.requested_capability,
+                    "agent": workflow_result.selected_agent,
+                    "execution_time_ms": workflow_result.execution_time_ms,
+                },
             )
 
-            return GatewayResponse(
-                success=True,
-                message="Execution completed successfully.",
-                result=result,
-                metadata=metadata,
+            await self._publish_completed(
+                request,
+                workflow_result,
+            )
+
+            return GatewayResponse.from_workflow(
+                workflow_result,
+                metadata,
             )
 
         except Exception as exc:
 
-            completed = datetime.utcnow()
+            logger.exception("Gateway execution failed.")
 
-            metadata.execution_completed_at = (
-                completed
-            )
-
-            metadata.execution_time_ms = (
-                completed - started
-            ).total_seconds() * 1000
-
-            logger.exception(
-                "Gateway execution failed."
+            await self._publish_failed(
+                request,
+                exc,
             )
 
             raise GatewayExecutionError(
-                str(exc),
+                message="Workflow execution failed.",
+                cause=exc,
             ) from exc
-
-    # ==========================================================
-    # Agent Execution
-    # ==========================================================
-
-    async def _execute_agent(
-        self,
-        *,
-        agent: Any,
-        request: Any,
-    ) -> Any:
-        return await agent.execute(request)
+        
     # ==========================================================
     # Validation
     # ==========================================================
@@ -196,7 +167,6 @@ class EnterpriseGateway:
 
     async def _authorize(
         self,
-        request: GatewayRequest,
         metadata: GatewayExecutionMetadata,
     ) -> None:
         """
@@ -246,17 +216,16 @@ class EnterpriseGateway:
         """
         Return registered agent names.
         """
-
-        return self._router.registered_agents()
-
+        return self._registry.agent_names()
+    
     def supported_capabilities(
         self,
     ) -> dict[str, list[str]]:
         """
         Return capabilities grouped by agent.
         """
-
-        return self._router.supported_capabilities()
+        
+        return self._registry.supported_capabilities()
 
     # ==========================================================
     # Health
@@ -274,45 +243,79 @@ class EnterpriseGateway:
             "registered_agents": self.supported_agents(),
             "capabilities": self.supported_capabilities(),
         }
-
-    # ==========================================================
-    # Future Extension Hooks
-    # ==========================================================
-
-    async def execute_workflow(
+    
+    async def _publish_started(
         self,
         request: GatewayRequest,
-    ) -> GatewayResponse:
+    ) -> None:  
         """
-        Workflow execution hook.
-
-        Future integration:
-            - Workflow Runtime
-            - Agentic Runtime
-            - Multi-Agent Runtime
+        Publish gateway started event.
         """
 
-        logger.info(
-            "Workflow execution requested."
+        await self._publisher.publish(
+            Event(
+                event_type=EventType.GATEWAY_STARTED,
+                metadata=EventMetadata(
+                    correlation_id = request.correlation_id or request.request_id,
+                    source="EnterpriseGateway",
+                ),
+                payload={
+                    "capability": request.capability,
+                    "execution_mode": request.execution_mode.value,
+                    "user_id": request.user_id,
+                }
+            )
         )
-
-        return await self.execute(request)
-
-    async def execute_multi_agent(
+        
+    async def _publish_completed(
         self,
-        requests: list[GatewayRequest],
-    ) -> list[GatewayResponse]:
+        request: GatewayRequest,
+        workflow_result,
+    ) -> None:
         """
-        Multi-agent execution hook.
-
-        Future integration:
-            - Multi-Agent Coordinator
-            - Task Dispatcher
-            - Result Aggregator
+        Publish gateway completed event.
         """
 
-        logger.info(
-            "Multi-agent execution requested."
+        await self._publisher.publish(
+            Event(
+                event_type=EventType.GATEWAY_COMPLETED,
+                metadata=EventMetadata(
+                    workflow_id=workflow_result.workflow_id,
+                    execution_id=workflow_result.execution_id,
+                    correlation_id=request.correlation_id or request.request_id,
+                    capability=workflow_result.requested_capability,
+                    agent=workflow_result.selected_agent,
+                    source="EnterpriseGateway",
+                ),
+                payload={
+                    "success": workflow_result.success,
+                    "selected_agent": workflow_result.selected_agent,
+                    "capability": workflow_result.requested_capability,
+                    "execution_time_ms": workflow_result.execution_time_ms,
+                },
+            )
         )
+        
+    async def _publish_failed(
+        self,
+        request: GatewayRequest,
+        exc: Exception,
+    ) -> None:  
+        """
+        Publish gateway failed event.
+        """
 
-        return await self.execute_many(requests)
+        await self._publisher.publish(
+            Event(
+                event_type=EventType.GATEWAY_FAILED,
+                metadata=EventMetadata(
+                    correlation_id = request.correlation_id or request.request_id,
+                    source="EnterpriseGateway",
+                ),
+                payload={
+                    "success": False,
+                    "capability": request.capability,
+                    "error": str(exc),
+                },
+            )
+        )

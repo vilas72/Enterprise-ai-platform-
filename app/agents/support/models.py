@@ -53,8 +53,6 @@ class SupportAgentRequest(BaseModel):
     
     description: str | None = None
     
-    search_tickets: str | None = None
-    
     payload: dict[str, Any] = Field(
         default_factory=dict
     )
@@ -62,6 +60,12 @@ class SupportAgentRequest(BaseModel):
     metadata: dict[str, Any] = Field(
         default_factory=dict
     )
+    
+    status: list[str] | None = None
+    
+    assignee: str | None = None
+    
+    max_results: int | None = None
 
 
 class SupportExecutionMetadata(BaseModel):

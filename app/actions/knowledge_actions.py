@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 
+from app.actions.ticket_search_request import TicketSearchRequest
 from app.agents.knowledge.models import (
     KnowledgeRequest,
     KnowledgeResponse,
@@ -54,8 +55,16 @@ class KnowledgeActions:
             "Executing enterprise search: %s",
             request.query,
         )
+        
+        search_request = TicketSearchRequest(
+                    query=request.query or "",
+                    project=request.project_key,
+                    status=request.status or [],
+                    assignee=request.assignee,
+                    max_results=request.max_results or 20,
+                )
 
-        return await self._knowledge_runtime.search(request)
+        return await self._knowledge_runtime.search(search_request)
 
     async def answer(
         self,

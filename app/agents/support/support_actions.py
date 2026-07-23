@@ -17,6 +17,8 @@ from app.agents.support.models import (
     SupportAgentRequest,
 )
 
+from app.actions.jira_actions import TicketSearchRequest
+
 logger = logging.getLogger(__name__)
 
 
@@ -56,14 +58,27 @@ class SupportActions:
         request: SupportAgentRequest,
     ):
 
-        query = request.query
-
-        if request.project_key:
-            query = f"project = {request.project_key}"
-
-        return await self._jira.search_issues(
-            query,
+        search_request = TicketSearchRequest(
+            query=request.query or "",
+            project=request.project_key,
+            status=request.status or [],
+            assignee=request.assignee,
+            max_results=request.max_results or 20,
         )
+            
+        logger.info("Jira returned %d issues", len(await self._jira.search_issues(search_request)))
+
+        issues = await self._jira.search_issues(
+            search_request,
+        )
+
+        logger.info(
+            "Jira returned %d issues",
+            len(issues),
+        )
+
+        return issues
+        
 
     async def create_ticket(
         self,
@@ -87,7 +102,11 @@ class SupportActions:
 
         logger.debug("Updating support ticket.")
 
-        return await self._jira.update_issue(request)
+        return await self._jira.update_issue(
+            issue_key=request.ticket_key,
+            summary=request.title,
+            description=request.description, 
+        )
 
     async def transition_ticket(
         self,
@@ -145,7 +164,7 @@ class SupportActions:
     # AI Assistance
     # ------------------------------------------------------------------
 
-    def summarize_incident(
+    async def summarize_incident(
         self,
         request: SupportAgentRequest,
     ):
@@ -155,9 +174,9 @@ class SupportActions:
 
         logger.debug("Summarizing incident.")
 
-        return self._ai.summarize(request.query or "")
+        return await self._ai.summarize(request.query or "")
 
-    def generate_resolution(
+    async def generate_resolution(
         self,
         request: SupportAgentRequest,
     ):
@@ -167,11 +186,11 @@ class SupportActions:
 
         logger.debug("Generating resolution.")
 
-        return self._ai.generate_resolution(
-            request.query or ""
+        return await self._ai.generate_resolution(
+            request
         )
 
-    def escalation_recommendation(
+    async def escalation_recommendation(
         self,
         request: SupportAgentRequest,
     ):
@@ -181,6 +200,8 @@ class SupportActions:
 
         logger.debug("Generating escalation recommendation.")
 
-        return self._ai.escalation_recommendation(
+        return await self._ai.escalation_recommendation(
             request.query or ""
         )
+        
+    

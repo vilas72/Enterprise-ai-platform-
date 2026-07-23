@@ -12,9 +12,11 @@ The models intentionally remain independent from transport protocols
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.gateway.models import GatewayRequest
 
 
 class DeveloperCapability(str, Enum):
@@ -97,7 +99,8 @@ class JiraIssueReference(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     issue_key: str
-
+   
+    
 
 class DeveloperAgentRequest(BaseModel):
     """
@@ -130,6 +133,53 @@ class DeveloperAgentRequest(BaseModel):
         default_factory=dict,
     )
 
+    project_key: str | None = None
+    
+    transition_id: str | None = None
+    
+    description: str | None = None
+    
+    @classmethod
+    def build_request(
+        cls,
+        gateway_request: GatewayRequest,
+        capability: str,
+    ) -> Self:
+        payload = gateway_request.payload or {}
+
+        repository = None
+        if "repository" in payload:
+            repository = RepositoryReference.model_validate(
+                payload["repository"]
+            )
+
+        pull_request = None
+        if "pull_request" in payload:
+            pull_request = PullRequestReference.model_validate(
+                payload["pull_request"]
+            )
+
+        jira_issue = None
+        if "jira_issue" in payload:
+            jira_issue = JiraIssueReference.model_validate(
+                payload["jira_issue"]
+            )
+
+        return cls(
+            capability=DeveloperCapability(capability),
+            conversation_id=gateway_request.request_id,
+            repository=repository,
+            pull_request=pull_request,
+            jira_issue=jira_issue,
+            query=payload.get("query"),
+            code=payload.get("code"),
+            path=payload.get("path"),
+            title=payload.get("title"),
+            description=payload.get("description"),
+            project_key=payload.get("project_key"),
+            transition_id=payload.get("transition_id"),
+            metadata=gateway_request.metadata,
+        )
 
 class DeveloperExecutionMetadata(BaseModel):
     """

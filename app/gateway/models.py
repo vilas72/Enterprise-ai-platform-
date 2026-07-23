@@ -7,6 +7,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 from typing import Any
+import uuid
 
 from pydantic import BaseModel, Field
 
@@ -37,7 +38,11 @@ class GatewayRequest(BaseModel):
     correlation_id: str | None = None
 
     user_id: str | None = None
-
+    
+    request_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()),
+    )
+    
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -63,6 +68,27 @@ class GatewayExecutionMetadata(BaseModel):
     additional_metadata: dict[str, Any] = Field(
         default_factory=dict
     )
+    
+    @classmethod
+    def from_workflow(
+        cls,
+        workflow_result,
+        execution_mode: GatewayExecutionMode,
+        selected_agent: str | None = None,
+        governance_approved: bool = True,
+    ):
+        return cls(
+            selected_agent=selected_agent,
+            execution_mode=execution_mode,
+            governance_approved=governance_approved,
+            execution_completed_at=datetime.utcnow(),
+            execution_time_ms=workflow_result.execution_time_ms,
+            additional_metadata={
+                "workflow_id": workflow_result.workflow_id,
+                "execution_id": workflow_result.execution_id,
+                "success": workflow_result.success,
+            },
+        )
 
 
 class GatewayResponse(BaseModel):
@@ -77,3 +103,17 @@ class GatewayResponse(BaseModel):
     result: Any | None = None
 
     metadata: GatewayExecutionMetadata
+    
+    
+    @classmethod
+    def from_workflow(
+        cls,
+        workflow_result,
+        metadata,
+    ):
+        return cls(
+            success=workflow_result.success,
+            message=getattr(workflow_result, "message", ""),
+            result=workflow_result.result,
+            metadata=metadata,
+        )

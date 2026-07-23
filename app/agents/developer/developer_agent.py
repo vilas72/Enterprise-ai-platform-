@@ -22,6 +22,7 @@ from app.agents.developer.models import (
     DeveloperCapability,
     DeveloperExecutionMetadata,
 )
+from app.gateway.models import GatewayRequest
 
 
 logger = logging.getLogger(__name__)
@@ -181,6 +182,7 @@ class DeveloperAgent:
             #
 
             if request.capability in self._async_handlers:
+                logger.info("Developer Request: %s", request.capability)
 
                 handler = self._async_handlers[
                     request.capability
@@ -204,12 +206,12 @@ class DeveloperAgent:
 
                 raise ValueError(
                     f"Unsupported capability: "
-                    f"{request.capability.value}"
+                    f"{request.capability}"
                 )
 
             logger.info(
                 "Developer capability '%s' completed successfully.",
-                request.capability.value,
+                request.capability,
             )
 
             return DeveloperAgentResponse(
@@ -224,7 +226,7 @@ class DeveloperAgent:
 
             logger.exception(
                 "Developer capability '%s' failed.",
-                request.capability.value,
+                request.capability,
             )
 
             return DeveloperAgentResponse(
@@ -255,7 +257,7 @@ class DeveloperAgent:
 
         logger.debug(
             "Governance validation completed for capability '%s'.",
-            request.capability.value,
+            request.capability,
         )
 
     # ------------------------------------------------------------------
@@ -288,3 +290,5 @@ class DeveloperAgent:
             capability in self._async_handlers
             or capability in self._sync_handlers
         )
+        
+   

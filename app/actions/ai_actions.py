@@ -22,6 +22,7 @@ from app.agents.developer.models import (
     ArchitectureRecommendation,
     DeveloperAgentRequest,
 )
+from app.agents.support.models import SupportAgentRequest
 from app.domain.generate_request import GenerateRequest
 from app.services.ai_service import AIService
 
@@ -249,7 +250,7 @@ class AIActions:
     # Dispatcher
     # ---------------------------------------------------------
 
-    def execute(
+    async def execute(
         self,
         capability: str,
         request: DeveloperAgentRequest,
@@ -272,4 +273,222 @@ class AIActions:
                 f"Unsupported AI capability: {capability}"
             )
 
-        return handler(request)
+        return await handler(request)
+    
+    async def generate_resolution(
+        self,
+        request: SupportAgentRequest,
+    ) -> str:
+        prompt = f"""`
+        Generate a production-ready resolution.
+
+        Title:
+        {request.title}
+
+        Description:
+        {request.description}
+
+        Query:
+        {request.query}
+        """
+
+        return self._generate(prompt)
+    
+        
+    async def escalation_recommendation(
+        self,
+        request: SupportAgentRequest,
+    ) -> str:
+        """
+        Generate an escalation recommendation for a support ticket.
+        """
+
+        logger.info("Generating escalation recommendation for support ticket.")
+
+        return await self._generate(
+            f"""
+            You are a senior software engineer.
+
+            Generate a professional escalation recommendation for the following support ticket.
+
+            Include:
+
+            - Root cause analysis
+            - Recommended next steps
+            - References to relevant documentation
+
+            Support Ticket
+
+            {request.description}
+            """
+        )
+        
+    async def search_knowledge_base(
+        self,
+        request: SupportAgentRequest,
+    ) -> str:
+        """
+        Search the knowledge base for relevant articles.
+        """
+
+        logger.info("Searching knowledge base for relevant articles.")
+
+        return await self._generate(
+            f"""
+            You are a senior software engineer.
+
+            Search the knowledge base for relevant articles related to the following support ticket.
+
+            Include:
+
+            - Article titles
+            - Summaries
+            - Links to full articles
+
+            Support Ticket
+
+            {request.description}
+            """
+        )
+        
+    async def summarize_incident(
+        self,
+        request: SupportAgentRequest,
+    ) -> str:
+        """
+        Summarize a support incident.
+        """
+
+        logger.info("Summarizing support incident.")
+
+        return await self._generate(
+            f"""
+            You are a senior software engineer.
+
+            Summarize the following support incident.
+
+            Include:
+
+            - Key details
+            - Root cause
+            - Resolution steps
+            - Lessons learned
+
+            Support Incident
+
+            {request.description}
+            """
+        )
+        
+    async def similar_incidents(
+        self,
+        request: SupportAgentRequest,
+    ) -> str:
+        """
+        Find similar support incidents.
+        """
+
+        logger.info("Finding similar support incidents.")
+
+        return await self._generate(
+            f"""
+            You are a senior software engineer.
+
+            Find similar support incidents related to the following support ticket.
+
+            Include:
+
+            - Incident summaries
+            - Root causes
+            - Resolutions
+            - Lessons learned
+
+            Support Ticket
+
+            {request.description}
+            """
+        )
+        
+    async def recommend_articles(
+        self,
+        request: SupportAgentRequest,
+    ) -> str:
+        """
+        Recommend knowledge articles for a support ticket.
+        """
+
+        logger.info("Recommending knowledge articles for support ticket.")
+
+        return await self._generate(
+            f"""
+            You are a senior software engineer.
+
+            Recommend knowledge articles for the following support ticket.
+
+            Include:
+
+            - Article titles
+            - Summaries
+            - Links to full articles
+
+            Support Ticket
+
+            {request.description}
+            """
+        )
+    
+    async def analyze_root_cause(
+        self,
+        request: SupportAgentRequest,
+    ) -> str:
+        """
+        Analyze the root cause of a support ticket.
+        """
+
+        logger.info("Analyzing root cause of support ticket.")
+
+        return await self._generate(
+            f"""
+            You are a senior software engineer.
+
+            Analyze the root cause of the following support ticket.
+
+            Include:
+
+            - Key details
+            - Root cause analysis
+            - Recommendations for resolution
+
+            Support Ticket
+
+            {request.description}
+            """
+        )
+    
+    async def update_ticket(
+        self,
+        request: SupportAgentRequest,
+    ) -> str:
+        """
+        Update a support ticket.
+        """
+
+        logger.info("Updating support ticket.")
+
+        return await self._generate(
+            f"""
+            You are a senior software engineer.
+
+            Update the following support ticket with the latest information.
+
+            Include:
+
+            - Updated status
+            - Resolution steps
+            - References to relevant documentation
+
+            Support Ticket
+
+            {request.description}
+            """
+        )
